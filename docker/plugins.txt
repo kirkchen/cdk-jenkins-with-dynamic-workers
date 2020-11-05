@@ -9,6 +9,7 @@ email-ext:latest
 git:latest
 github-branch-source:latest
 gradle:latest
+job-dsl:latest
 ldap:latest
 mailer:latest
 matrix-auth:latest

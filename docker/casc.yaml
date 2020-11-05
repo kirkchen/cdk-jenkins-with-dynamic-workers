@@ -17,6 +17,38 @@ security:
     authenticators:
       - global:
           strategy: triggeringUsersAuthorizationStrategy
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "github-token"
+              username: ${GITHUB_USERNAME}
+              password: ${GITHUB_TOKEN}
+              description: "Github persona access token"
 unclassified:
   location:
     url: http://localhost:8080/
+jobs:
+  - script: >
+      job('Seed') {
+        quietPeriod(0)
+        concurrentBuild(false)
+        logRotator {
+          numToKeep(5)
+        }
+        scm {
+          git {
+            branch('*/main')
+            remote {
+              github('${GITHUB_REPO}', 'https')
+              credentials('github-token')            }
+          }
+        }
+        steps {
+          jobDsl {
+            targets 'jobs/**/*.groovy'
+          }
+        }
+      }
