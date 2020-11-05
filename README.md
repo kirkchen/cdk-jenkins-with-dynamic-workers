@@ -1,1 +1,1 @@
-# jenkins-as-code-example
+# Jenkins as Code example
