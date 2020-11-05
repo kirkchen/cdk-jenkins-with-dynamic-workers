@@ -1,0 +1,14 @@
+name: Install Build Tools
+description: Install Build Tools
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: InstallBuildTools
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
+            - cinst git -y
+            - cinst jdk8 -y

@@ -1,0 +1,109 @@
+jenkins:
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: ${JENKINS_ADMIN_ACCOUNT}
+          password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+        - "Overall/Administer:admin"
+        - "Overall/Read:authenticated"
+  clouds:
+    - amazonEC2:
+        cloudName: "ec2"
+        region: "ap-northeast-1"
+        sshKeysCredentialsId: "keypair"
+        useInstanceProfileForCredentials: false
+        templates:
+          - ami: ${JENKINS_WINDOWS_WORKER_AMI}
+            amiType:
+              windowsData:
+                password: ${JENKINS_WINDOWS_WORKER_PASSWORD}
+                specifyPassword: true
+                useHTTPS: false
+            description: "windows"
+            labelString: "windows"
+            remoteAdmin: ${JENKINS_WINDOWS_WORKER_ACCOUNT}
+            remoteFS: "c:\\jenkins"
+            spotConfig:
+              useBidPrice: false
+            subnetId: ${JENKINS_WINDOWS_WORKER_SUBNETS}
+            tags:
+              - name: "Name"
+                value: "Jenkins-Dynamic-Windows-Worker"
+            type: T3Medium
+    - ecs:
+        credentialsId: false
+        cluster: ${JENKINS_LINUX_WORKER_ECS_CLUSTER_ARN}
+        jenkinsUrl: "http://leader.jenkins:8080"
+        name: "ecs"
+        regionName: "ap-northeast-1"
+        templates:
+          - cpu: 512
+            memoryReservation: 1024
+            image: "jenkins/inbound-agent"
+            label: "linux"
+            launchType: "FARGATE"
+            platformVersion: "LATEST"
+            remoteFSRoot: "/home/jenkins"
+            securityGroups: ${JENKINS_LINUX_WORKER_SECURITY_GROUPS}
+            subnets: ${JENKINS_LINUX_WORKER_SUBNETS}
+            taskrole: ${JENKINS_LINUX_WORKER_TASK_ROLE}
+            executionRole: ${JENKINS_LINUX_WORKER_EXECUTION_ROLE}
+            templateName: "Jenkins-Dynamic-Linux-Worker"
+            logDriver: "awslogs"
+            logDriverOptions:
+              - name: "awslogs-group"
+                value: ${JENKINS_LINUX_WORKER_LOGS_GROUP}
+              - name: "awslogs-region"
+                value: "ap-northeast-1"
+              - name: "awslogs-stream-prefix"
+                value: "jenkins-linux-worker"
+security:
+  queueItemAuthenticator:
+    authenticators:
+      - global:
+          strategy: triggeringUsersAuthorizationStrategy
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "github-token"
+              username: ${GITHUB_USERNAME}
+              password: ${GITHUB_TOKEN}
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "keypair"
+              username: "jenkins"
+              privateKeySource:
+                directEntry:
+                  privateKey: ${AWS_KEYPAIR}
+unclassified:
+  location:
+    url: http://localhost:8080
+jobs:
+  - script: >
+      job('Seed') {
+        quietPeriod(0)
+        concurrentBuild(false)
+        logRotator {
+          numToKeep(5)
+        }
+        scm {
+          git {
+            branch('*/main')
+            remote {
+              github('${GITHUB_USERNAME}/${GITHUB_REPO}', 'https')
+              credentials('github-token')            }
+          }
+        }
+        steps {
+          jobDsl {
+            targets 'jobs/**/*.groovy'
+          }
+        }
+      }
