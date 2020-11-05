@@ -10,8 +10,6 @@ jenkins:
       permissions:
         - "Overall/Administer:admin"
         - "Overall/Read:authenticated"
-  remotingSecurity:
-    enabled: true
 security:
   queueItemAuthenticator:
     authenticators:
