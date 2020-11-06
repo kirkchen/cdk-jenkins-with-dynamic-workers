@@ -1,12 +1,5 @@
-import { App, Construct, Stack, StackProps } from '@aws-cdk/core';
-
-export class ImageBuilderStack extends Stack {
-  constructor(scope: Construct, id: string, props: StackProps = {}) {
-    super(scope, id, props);
-
-    // define resources here...
-  }
-}
+import { App } from '@aws-cdk/core';
+import { ImageBuilderStack } from './stacks/imageBuilderStack';
 
 // for development, use account/region from cdk cli
 const devEnv = {
@@ -16,7 +9,7 @@ const devEnv = {
 
 const app = new App();
 
-new ImageBuilderStack(app, 'my-stack-dev', { env: devEnv });
+new ImageBuilderStack(app, 'image-builder-stack-dev', { env: devEnv });
 // new ImageBuilderStack(app, 'my-stack-prod', { env: prodEnv });
 
 app.synth();

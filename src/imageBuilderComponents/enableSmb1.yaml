@@ -1,0 +1,15 @@
+name: Enable smb1
+description: Enable smb1
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: Install
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - Enable-WindowsOptionalFeature -Online -FeatureName smb1protocol -NoRestart
+            - Set-SmbServerConfiguration -EnableSMB1Protocol $true -Confirm:$true -Force
+            - set-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters SMB1 -Type DWORD -Value 1 -Force
+            - Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False

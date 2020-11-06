@@ -1,8 +1,8 @@
-const { AwsCdkTypeScriptApp } = require('projen');
+const { AwsCdkTypeScriptApp } = require('projen')
 
 const project = new AwsCdkTypeScriptApp({
-  cdkVersion: "1.63.0",
-  name: "jenkins-as-code-example",
+  cdkVersion: '1.63.0',
+  name: 'jenkins-as-code-example',
 
   /* AwsCdkTypeScriptAppOptions */
   // appEntrypoint: "main.ts",                                                 /* The CDK app's entrypoint (relative to the source directory, which is "src" by default). */
@@ -87,11 +87,15 @@ const project = new AwsCdkTypeScriptApp({
   // sampleCode: true,                                                         /* Generate one-time sample in `src/` and `test/` if there are no files there. */
   // tsconfig: undefined,                                                      /* Custom TSConfig. */
   // typescriptVersion: "^3.9.5",                                              /* TypeScript version to use. */
+  license: 'MIT',
   gitignore: ['.idea'],
-  devDeps: [
-    'prettier'
+  cdkDependencies: [
+    '@aws-cdk/aws-ec2',
+    '@aws-cdk/aws-iam',
+    '@aws-cdk/aws-imagebuilder',
+    '@aws-cdk/aws-s3'
   ],
-  deps: []
-});
+  devDeps: ['prettier']
+})
 
-project.synth();
+project.synth()

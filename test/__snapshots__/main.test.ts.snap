@@ -1,0 +1,268 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Snapshot 1`] = `
+Object {
+  "Parameters": Object {
+    "SsmParameterValueawsserviceamiwindowslatestWindowsServer2016EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter": Object {
+      "Default": "/aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base",
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+    },
+  },
+  "Resources": Object {
+    "InstallBuildTools": Object {
+      "Properties": Object {
+        "Data": "name: Install Build Tools
+description: Install Build Tools
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: InstallChocolatey
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
+      - name: InstallBuildTools
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - cinst git -y
+            - cinst jdk8 -y
+      - name: AddTooslPathToSystemPath
+        action: ExecutePowerShell
+        loop:
+          name: ToolsLoop
+          forEach:
+            - C:\\\\Program Files\\\\Git\\\\bin
+        inputs:
+          commands:
+            - $env:Path += \\";{{loop.value}}\\"
+",
+        "Name": "Install Build Tools",
+        "Platform": "Windows",
+        "Version": "1.0.1",
+      },
+      "Type": "AWS::ImageBuilder::Component",
+    },
+    "JenkinsWindowsSlave": Object {
+      "Properties": Object {
+        "ImageRecipeArn": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsWindowsSlaveRecipe",
+            "Arn",
+          ],
+        },
+        "InfrastructureConfigurationArn": Object {
+          "Fn::GetAtt": Array [
+            "WindowsImageBuilder",
+            "Arn",
+          ],
+        },
+        "Name": "Jenkins Windows Slave Pipeline",
+      },
+      "Type": "AWS::ImageBuilder::ImagePipeline",
+    },
+    "JenkinsWindowsSlaveRecipe": Object {
+      "Properties": Object {
+        "Components": Array [
+          Object {
+            "ComponentArn": Object {
+              "Fn::GetAtt": Array [
+                "SetupWinRM",
+                "Arn",
+              ],
+            },
+          },
+          Object {
+            "ComponentArn": Object {
+              "Fn::GetAtt": Array [
+                "InstallBuildTools",
+                "Arn",
+              ],
+            },
+          },
+        ],
+        "Name": "Jenkins Windows Slave Recipe",
+        "ParentImage": Object {
+          "Ref": "SsmParameterValueawsserviceamiwindowslatestWindowsServer2016EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter",
+        },
+        "Version": "1.0.0",
+      },
+      "Type": "AWS::ImageBuilder::ImageRecipe",
+    },
+    "SetupWinRM": Object {
+      "Properties": Object {
+        "Data": "name: Setup WinRM
+description: Setup WinRM
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: Install
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - cmd.exe /c winrm quickconfig -q
+            - cmd.exe /c winrm quickconfig '-transport:http'
+            - cmd.exe /c winrm set \\"winrm/config\\" '@{MaxTimeoutms=\\"1800000\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/winrs\\" '@{MaxMemoryPerShellMB=\\"4096\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/service\\" '@{AllowUnencrypted=\\"true\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/client\\" '@{AllowUnencrypted=\\"true\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/service/auth\\" '@{Basic=\\"true\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/client/auth\\" '@{Basic=\\"true\\"}'
+            - cmd.exe /c winrm set \\"winrm/config/listener?Address=*+Transport=HTTP\\" '@{Port=\\"5985\\"}'
+            - cmd.exe /c netsh advfirewall firewall set rule group=\\"remote administration-winrm\\" new enable=yes
+            - cmd.exe /c netsh firewall add portopening TCP 5985 \\"Port 5985\\"
+            - cmd.exe /c net stop winrm
+            - cmd.exe /c sc config winrm start= auto
+            - cmd.exe /c net start winrm
+",
+        "Name": "Setup WinRM",
+        "Platform": "Windows",
+        "Version": "1.0.0",
+      },
+      "Type": "AWS::ImageBuilder::Component",
+    },
+    "WindowsBuilderInstanceProfile": Object {
+      "Properties": Object {
+        "InstanceProfileName": "WindowsBuilderInstanceProfile",
+        "Roles": Array [
+          Object {
+            "Ref": "WindowsBuilderRole21C80FD6",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::InstanceProfile",
+    },
+    "WindowsBuilderRole21C80FD6": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": Object {
+                "Service": Object {
+                  "Fn::Join": Array [
+                    "",
+                    Array [
+                      "ec2.",
+                      Object {
+                        "Ref": "AWS::URLSuffix",
+                      },
+                    ],
+                  ],
+                },
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": Array [
+          Object {
+            "Fn::Join": Array [
+              "",
+              Array [
+                "arn:",
+                Object {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/AmazonSSMManagedInstanceCore",
+              ],
+            ],
+          },
+          Object {
+            "Fn::Join": Array [
+              "",
+              Array [
+                "arn:",
+                Object {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/EC2InstanceProfileForImageBuilder",
+              ],
+            ],
+          },
+        ],
+        "RoleName": "WindowsBuilderRole",
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "WindowsImageBuilder": Object {
+      "Properties": Object {
+        "InstanceProfileName": "WindowsBuilderInstanceProfile",
+        "InstanceTypes": Array [
+          "t3.xlarge",
+        ],
+        "Logging": Object {
+          "S3Logs": Object {
+            "S3BucketName": Object {
+              "Ref": "WindowsImageBuilderLogsEE3B5D59",
+            },
+            "S3KeyPrefix": "windows-image-builder",
+          },
+        },
+        "Name": "Windows Image Builder",
+      },
+      "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
+    },
+    "WindowsImageBuilderLogsEE3B5D59": Object {
+      "DeletionPolicy": "Delete",
+      "Properties": Object {
+        "BucketName": "test-logs",
+      },
+      "Type": "AWS::S3::Bucket",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "WindowsImageBuilderLogsPolicyDE2599FC": Object {
+      "Properties": Object {
+        "Bucket": Object {
+          "Ref": "WindowsImageBuilderLogsEE3B5D59",
+        },
+        "PolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": "s3:*",
+              "Effect": "Allow",
+              "Principal": Object {
+                "AWS": Object {
+                  "Fn::GetAtt": Array [
+                    "WindowsBuilderRole21C80FD6",
+                    "Arn",
+                  ],
+                },
+              },
+              "Resource": Array [
+                Object {
+                  "Fn::GetAtt": Array [
+                    "WindowsImageBuilderLogsEE3B5D59",
+                    "Arn",
+                  ],
+                },
+                Object {
+                  "Fn::Join": Array [
+                    "",
+                    Array [
+                      Object {
+                        "Fn::GetAtt": Array [
+                          "WindowsImageBuilderLogsEE3B5D59",
+                          "Arn",
+                        ],
+                      },
+                      "/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::S3::BucketPolicy",
+    },
+  },
+}
+`;

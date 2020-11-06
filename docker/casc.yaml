@@ -27,7 +27,7 @@ credentials:
               description: "Github persona access token"
 unclassified:
   location:
-    url: http://localhost:8080/
+    url: ${JENKINS_HOST}
 jobs:
   - script: >
       job('Seed') {
