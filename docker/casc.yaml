@@ -10,6 +10,30 @@ jenkins:
       permissions:
         - "Overall/Administer:admin"
         - "Overall/Read:authenticated"
+  clouds:
+    - amazonEC2:
+        cloudName: "dynamic"
+        region: "ap-northeast-1"
+        sshKeysCredentialsId: "keypair"
+        useInstanceProfileForCredentials: false
+        templates:
+          - ami: ${AWS_JENKINS_WINDOWS_SLAVE_AMI}
+            amiType:
+              windowsData:
+                password: ${AWS_JENKINS_WINDOWS_SLAVE_PASSWORD}
+                specifyPassword: true
+                useHTTPS: false
+            description: "windows builder"
+            labelString: "windows"
+            remoteAdmin: ${AWS_JENKINS_WINDOWS_SLAVE_ACCOUNT}
+            remoteFS: "c:\\jenkins"
+            spotConfig:
+              useBidPrice: false
+            subnetId: ${AWS_JENKINS_WINDOWS_SLAVE_SUBNETS}
+            tags:
+              - name: "Name"
+                value: "Jenkins-Dynamic-Windows"
+            type: T3Medium
 security:
   queueItemAuthenticator:
     authenticators:
@@ -24,7 +48,13 @@ credentials:
               id: "github-token"
               username: ${GITHUB_USERNAME}
               password: ${GITHUB_TOKEN}
-              description: "Github persona access token"
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "keypair"
+              username: "jenkins"
+              privateKeySource:
+                directEntry:
+                  privateKey: ${AWS_KEYPAIR}
 unclassified:
   location:
     url: ${JENKINS_HOST}

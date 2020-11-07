@@ -2,141 +2,396 @@
 
 exports[`Snapshot 1`] = `
 Object {
-  "Parameters": Object {
-    "SsmParameterValueawsserviceamiwindowslatestWindowsServer2016EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter": Object {
-      "Default": "/aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base",
-      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+  "Outputs": Object {
+    "JenkinsServiceLoadBalancerDNS30E6EA1B": Object {
+      "Value": Object {
+        "Fn::GetAtt": Array [
+          "JenkinsServiceLB860F7FEB",
+          "DNSName",
+        ],
+      },
+    },
+    "JenkinsServiceServiceURL5427B459": Object {
+      "Value": Object {
+        "Fn::Join": Array [
+          "",
+          Array [
+            "http://",
+            Object {
+              "Fn::GetAtt": Array [
+                "JenkinsServiceLB860F7FEB",
+                "DNSName",
+              ],
+            },
+          ],
+        ],
+      },
     },
   },
   "Resources": Object {
-    "InstallBuildTools": Object {
-      "Properties": Object {
-        "Data": "name: Install Build Tools
-description: Install Build Tools
-schemaVersion: 1.0
-
-phases:
-  - name: build
-    steps:
-      - name: InstallChocolatey
-        action: ExecutePowerShell
-        inputs:
-          commands:
-            - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
-      - name: InstallBuildTools
-        action: ExecutePowerShell
-        inputs:
-          commands:
-            - cinst git -y
-            - cinst jdk8 -y
-      - name: AddTooslPathToSystemPath
-        action: ExecutePowerShell
-        loop:
-          name: ToolsLoop
-          forEach:
-            - C:\\\\Program Files\\\\Git\\\\bin
-        inputs:
-          commands:
-            - $env:Path += \\";{{loop.value}}\\"
-",
-        "Name": "Install Build Tools",
-        "Platform": "Windows",
-        "Version": "1.0.1",
-      },
-      "Type": "AWS::ImageBuilder::Component",
+    "JenkinsCluster35F91C63": Object {
+      "Type": "AWS::ECS::Cluster",
     },
-    "JenkinsWindowsSlave": Object {
+    "JenkinsDynamicSlavePolicyDBECFF2D": Object {
       "Properties": Object {
-        "ImageRecipeArn": Object {
-          "Fn::GetAtt": Array [
-            "JenkinsWindowsSlaveRecipe",
-            "Arn",
-          ],
-        },
-        "InfrastructureConfigurationArn": Object {
-          "Fn::GetAtt": Array [
-            "WindowsImageBuilder",
-            "Arn",
-          ],
-        },
-        "Name": "Jenkins Windows Slave Pipeline",
-      },
-      "Type": "AWS::ImageBuilder::ImagePipeline",
-    },
-    "JenkinsWindowsSlaveRecipe": Object {
-      "Properties": Object {
-        "Components": Array [
-          Object {
-            "ComponentArn": Object {
-              "Fn::GetAtt": Array [
-                "SetupWinRM",
-                "Arn",
+        "Description": "",
+        "ManagedPolicyName": "JenkinsDynamicSlavePolicy",
+        "Path": "/",
+        "PolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": Array [
+                "ec2:DescribeSpotInstanceRequests",
+                "ec2:CancelSpotInstanceRequests",
+                "ec2:GetConsoleOutput",
+                "ec2:RequestSpotInstances",
+                "ec2:RunInstances",
+                "ec2:StartInstances",
+                "ec2:StopInstances",
+                "ec2:TerminateInstances",
+                "ec2:CreateTags",
+                "ec2:DeleteTags",
+                "ec2:DescribeInstances",
+                "ec2:DescribeKeyPairs",
+                "ec2:DescribeRegions",
+                "ec2:DescribeImages",
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
+                "ec2:GetPasswordData",
+                "iam:ListInstanceProfilesForRole",
+                "iam:PassRole",
               ],
+              "Effect": "Allow",
+              "Resource": "*",
             },
-          },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::ManagedPolicy",
+    },
+    "JenkinsService5AD0BFA6": Object {
+      "DependsOn": Array [
+        "JenkinsServiceLBPublicListenerECSGroup0DADB234",
+        "JenkinsServiceLBPublicListener2B81E795",
+      ],
+      "Properties": Object {
+        "Cluster": Object {
+          "Ref": "JenkinsCluster35F91C63",
+        },
+        "DeploymentConfiguration": Object {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50,
+        },
+        "DesiredCount": 1,
+        "EnableECSManagedTags": false,
+        "HealthCheckGracePeriodSeconds": 60,
+        "LaunchType": "FARGATE",
+        "LoadBalancers": Array [
           Object {
-            "ComponentArn": Object {
-              "Fn::GetAtt": Array [
-                "InstallBuildTools",
-                "Arn",
-              ],
+            "ContainerName": "web",
+            "ContainerPort": 8080,
+            "TargetGroupArn": Object {
+              "Ref": "JenkinsServiceLBPublicListenerECSGroup0DADB234",
             },
           },
         ],
-        "Name": "Jenkins Windows Slave Recipe",
-        "ParentImage": Object {
-          "Ref": "SsmParameterValueawsserviceamiwindowslatestWindowsServer2016EnglishFullBaseC96584B6F00A464EAD1953AFF4B05118Parameter",
+        "NetworkConfiguration": Object {
+          "AwsvpcConfiguration": Object {
+            "AssignPublicIp": "DISABLED",
+            "SecurityGroups": Array [
+              Object {
+                "Fn::GetAtt": Array [
+                  "JenkinsServiceSecurityGroup15C98714",
+                  "GroupId",
+                ],
+              },
+            ],
+            "Subnets": Array [
+              Object {
+                "Ref": "JenkinsVpcPrivateSubnet1SubnetA4649557",
+              },
+              Object {
+                "Ref": "JenkinsVpcPrivateSubnet2Subnet83638529",
+              },
+            ],
+          },
         },
-        "Version": "1.0.0",
+        "TaskDefinition": Object {
+          "Ref": "JenkinsServiceTaskDef27CAAC73",
+        },
       },
-      "Type": "AWS::ImageBuilder::ImageRecipe",
+      "Type": "AWS::ECS::Service",
     },
-    "SetupWinRM": Object {
+    "JenkinsServiceLB860F7FEB": Object {
+      "DependsOn": Array [
+        "JenkinsVpcPublicSubnet1DefaultRoute22F36C44",
+        "JenkinsVpcPublicSubnet2DefaultRoute4CCC01E5",
+      ],
       "Properties": Object {
-        "Data": "name: Setup WinRM
-description: Setup WinRM
-schemaVersion: 1.0
-
-phases:
-  - name: build
-    steps:
-      - name: Install
-        action: ExecutePowerShell
-        inputs:
-          commands:
-            - cmd.exe /c winrm quickconfig -q
-            - cmd.exe /c winrm quickconfig '-transport:http'
-            - cmd.exe /c winrm set \\"winrm/config\\" '@{MaxTimeoutms=\\"1800000\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/winrs\\" '@{MaxMemoryPerShellMB=\\"4096\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/service\\" '@{AllowUnencrypted=\\"true\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/client\\" '@{AllowUnencrypted=\\"true\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/service/auth\\" '@{Basic=\\"true\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/client/auth\\" '@{Basic=\\"true\\"}'
-            - cmd.exe /c winrm set \\"winrm/config/listener?Address=*+Transport=HTTP\\" '@{Port=\\"5985\\"}'
-            - cmd.exe /c netsh advfirewall firewall set rule group=\\"remote administration-winrm\\" new enable=yes
-            - cmd.exe /c netsh firewall add portopening TCP 5985 \\"Port 5985\\"
-            - cmd.exe /c net stop winrm
-            - cmd.exe /c sc config winrm start= auto
-            - cmd.exe /c net start winrm
-",
-        "Name": "Setup WinRM",
-        "Platform": "Windows",
-        "Version": "1.0.0",
-      },
-      "Type": "AWS::ImageBuilder::Component",
-    },
-    "WindowsBuilderInstanceProfile": Object {
-      "Properties": Object {
-        "InstanceProfileName": "WindowsBuilderInstanceProfile",
-        "Roles": Array [
+        "LoadBalancerAttributes": Array [
           Object {
-            "Ref": "WindowsBuilderRole21C80FD6",
+            "Key": "deletion_protection.enabled",
+            "Value": "false",
           },
         ],
+        "Scheme": "internet-facing",
+        "SecurityGroups": Array [
+          Object {
+            "Fn::GetAtt": Array [
+              "JenkinsServiceLBSecurityGroup0A6E5083",
+              "GroupId",
+            ],
+          },
+        ],
+        "Subnets": Array [
+          Object {
+            "Ref": "JenkinsVpcPublicSubnet1Subnet1ED9E091",
+          },
+          Object {
+            "Ref": "JenkinsVpcPublicSubnet2Subnet1686A654",
+          },
+        ],
+        "Type": "application",
       },
-      "Type": "AWS::IAM::InstanceProfile",
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
     },
-    "WindowsBuilderRole21C80FD6": Object {
+    "JenkinsServiceLBPublicListener2B81E795": Object {
+      "Properties": Object {
+        "DefaultActions": Array [
+          Object {
+            "TargetGroupArn": Object {
+              "Ref": "JenkinsServiceLBPublicListenerECSGroup0DADB234",
+            },
+            "Type": "forward",
+          },
+        ],
+        "LoadBalancerArn": Object {
+          "Ref": "JenkinsServiceLB860F7FEB",
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+    },
+    "JenkinsServiceLBPublicListenerECSGroup0DADB234": Object {
+      "Properties": Object {
+        "HealthCheckPath": "/login",
+        "Port": 80,
+        "Protocol": "HTTP",
+        "TargetType": "ip",
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    },
+    "JenkinsServiceLBSecurityGroup0A6E5083": Object {
+      "Properties": Object {
+        "GroupDescription": "Automatically created Security Group for ELB testJenkinsServiceLB841CE377",
+        "SecurityGroupIngress": Array [
+          Object {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow from anyone on port 80",
+            "FromPort": 80,
+            "IpProtocol": "tcp",
+            "ToPort": 80,
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "JenkinsServiceLBSecurityGrouptotestJenkinsServiceSecurityGroupB46325198080759B2C38": Object {
+      "Properties": Object {
+        "Description": "Load balancer to target",
+        "DestinationSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceSecurityGroup15C98714",
+            "GroupId",
+          ],
+        },
+        "FromPort": 8080,
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceLBSecurityGroup0A6E5083",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupEgress",
+    },
+    "JenkinsServiceSecurityGroup15C98714": Object {
+      "Properties": Object {
+        "GroupDescription": "test/Jenkins Service/Service/SecurityGroup",
+        "SecurityGroupEgress": Array [
+          Object {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "JenkinsServiceSecurityGroupfromtestJenkinsServiceLBSecurityGroupF5E547098080EFED46CF": Object {
+      "Properties": Object {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceSecurityGroup15C98714",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceLBSecurityGroup0A6E5083",
+            "GroupId",
+          ],
+        },
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
+    "JenkinsServiceTaskDef27CAAC73": Object {
+      "Properties": Object {
+        "ContainerDefinitions": Array [
+          Object {
+            "Environment": Array [
+              Object {
+                "Name": "JENKINS_ADMIN_ID",
+                "Value": "admin",
+              },
+              Object {
+                "Name": "JENKINS_ADMIN_PASSWORD",
+                "Value": "password",
+              },
+              Object {
+                "Name": "GITHUB_USERNAME",
+                "Value": "kirkchen",
+              },
+              Object {
+                "Name": "GITHUB_REPO",
+                "Value": "kirkchen/jenkins-as-code-example",
+              },
+              Object {
+                "Name": "JENKINS_HOST",
+                "Value": "http://jenki-jenki-6gwhoxq0fa9m-1153059349.ap-northeast-1.elb.amazonaws.com/",
+              },
+              Object {
+                "Name": "AWS_JENKINS_WINDOWS_SLAVE_AMI",
+                "Value": "ami-0209072377fde2f62",
+              },
+              Object {
+                "Name": "AWS_JENKINS_WINDOWS_SLAVE_ACCOUNT",
+                "Value": "jenkins",
+              },
+              Object {
+                "Name": "AWS_JENKINS_WINDOWS_SLAVE_SUBNETS",
+                "Value": Object {
+                  "Fn::Join": Array [
+                    "",
+                    Array [
+                      Object {
+                        "Ref": "JenkinsVpcPrivateSubnet1SubnetA4649557",
+                      },
+                      " ",
+                      Object {
+                        "Ref": "JenkinsVpcPrivateSubnet2Subnet83638529",
+                      },
+                    ],
+                  ],
+                },
+              },
+            ],
+            "Essential": true,
+            "Image": Object {
+              "Fn::Join": Array [
+                "",
+                Array [
+                  Object {
+                    "Ref": "AWS::AccountId",
+                  },
+                  ".dkr.ecr.",
+                  Object {
+                    "Ref": "AWS::Region",
+                  },
+                  ".",
+                  Object {
+                    "Ref": "AWS::URLSuffix",
+                  },
+                  "/aws-cdk/assets:e701e9952a593ecd80004c725c82743e861b46193e9b107d8f2360226aa6c148",
+                ],
+              ],
+            },
+            "LogConfiguration": Object {
+              "LogDriver": "awslogs",
+              "Options": Object {
+                "awslogs-group": Object {
+                  "Ref": "JenkinsServiceTaskDefwebLogGroupBDAAF0B1",
+                },
+                "awslogs-region": Object {
+                  "Ref": "AWS::Region",
+                },
+                "awslogs-stream-prefix": "Jenkins Service",
+              },
+            },
+            "Name": "web",
+            "PortMappings": Array [
+              Object {
+                "ContainerPort": 8080,
+                "Protocol": "tcp",
+              },
+            ],
+            "Secrets": Array [
+              Object {
+                "Name": "AWS_JENKINS_WINDOWS_SLAVE_PASSWORD",
+                "ValueFrom": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w",
+              },
+              Object {
+                "Name": "GITHUB_TOKEN",
+                "ValueFrom": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK",
+              },
+              Object {
+                "Name": "AWS_KEYPAIR",
+                "ValueFrom": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI",
+              },
+            ],
+          },
+        ],
+        "Cpu": "2048",
+        "ExecutionRoleArn": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceTaskDefExecutionRoleDF74F6E3",
+            "Arn",
+          ],
+        },
+        "Family": "testJenkinsServiceTaskDefB9D99351",
+        "Memory": "4096",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": Array [
+          "FARGATE",
+        ],
+        "TaskRoleArn": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsTaskRoleC937B2F3",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "AWS::ECS::TaskDefinition",
+    },
+    "JenkinsServiceTaskDefExecutionRoleDF74F6E3": Object {
       "Properties": Object {
         "AssumeRolePolicyDocument": Object {
           "Statement": Array [
@@ -144,17 +399,115 @@ phases:
               "Action": "sts:AssumeRole",
               "Effect": "Allow",
               "Principal": Object {
-                "Service": Object {
-                  "Fn::Join": Array [
-                    "",
-                    Array [
-                      "ec2.",
-                      Object {
-                        "Ref": "AWS::URLSuffix",
-                      },
-                    ],
+                "Service": "ecs-tasks.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "JenkinsServiceTaskDefExecutionRoleDefaultPolicyEF014E08": Object {
+      "Properties": Object {
+        "PolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": Array [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+              ],
+              "Effect": "Allow",
+              "Resource": Object {
+                "Fn::Join": Array [
+                  "",
+                  Array [
+                    "arn:",
+                    Object {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":ecr:",
+                    Object {
+                      "Ref": "AWS::Region",
+                    },
+                    ":",
+                    Object {
+                      "Ref": "AWS::AccountId",
+                    },
+                    ":repository/aws-cdk/assets",
                   ],
-                },
+                ],
+              },
+            },
+            Object {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+            Object {
+              "Action": Array [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+              ],
+              "Effect": "Allow",
+              "Resource": Object {
+                "Fn::GetAtt": Array [
+                  "JenkinsServiceTaskDefwebLogGroupBDAAF0B1",
+                  "Arn",
+                ],
+              },
+            },
+            Object {
+              "Action": Array [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w",
+            },
+            Object {
+              "Action": Array [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK",
+            },
+            Object {
+              "Action": Array [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "JenkinsServiceTaskDefExecutionRoleDefaultPolicyEF014E08",
+        "Roles": Array [
+          Object {
+            "Ref": "JenkinsServiceTaskDefExecutionRoleDF74F6E3",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "JenkinsServiceTaskDefwebLogGroupBDAAF0B1": Object {
+      "DeletionPolicy": "Retain",
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "JenkinsTaskRoleC937B2F3": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": Object {
+                "Service": "ecs-tasks.amazonaws.com",
               },
             },
           ],
@@ -162,106 +515,395 @@ phases:
         },
         "ManagedPolicyArns": Array [
           Object {
-            "Fn::Join": Array [
-              "",
-              Array [
-                "arn:",
-                Object {
-                  "Ref": "AWS::Partition",
-                },
-                ":iam::aws:policy/AmazonSSMManagedInstanceCore",
-              ],
-            ],
-          },
-          Object {
-            "Fn::Join": Array [
-              "",
-              Array [
-                "arn:",
-                Object {
-                  "Ref": "AWS::Partition",
-                },
-                ":iam::aws:policy/EC2InstanceProfileForImageBuilder",
-              ],
-            ],
+            "Ref": "JenkinsDynamicSlavePolicyDBECFF2D",
           },
         ],
-        "RoleName": "WindowsBuilderRole",
+        "RoleName": "JenkinsTaskRole",
       },
       "Type": "AWS::IAM::Role",
     },
-    "WindowsImageBuilder": Object {
+    "JenkinsVpc168DFB43": Object {
       "Properties": Object {
-        "InstanceProfileName": "WindowsBuilderInstanceProfile",
-        "InstanceTypes": Array [
-          "t3.xlarge",
-        ],
-        "Logging": Object {
-          "S3Logs": Object {
-            "S3BucketName": Object {
-              "Ref": "WindowsImageBuilderLogsEE3B5D59",
-            },
-            "S3KeyPrefix": "windows-image-builder",
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default",
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc",
           },
-        },
-        "Name": "Windows Image Builder",
+        ],
       },
-      "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
+      "Type": "AWS::EC2::VPC",
     },
-    "WindowsImageBuilderLogsEE3B5D59": Object {
-      "DeletionPolicy": "Delete",
+    "JenkinsVpcIGW7C2582A4": Object {
       "Properties": Object {
-        "BucketName": "test-logs",
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc",
+          },
+        ],
       },
-      "Type": "AWS::S3::Bucket",
-      "UpdateReplacePolicy": "Delete",
+      "Type": "AWS::EC2::InternetGateway",
     },
-    "WindowsImageBuilderLogsPolicyDE2599FC": Object {
+    "JenkinsVpcPrivateSubnet1DefaultRoute17402EE0": Object {
       "Properties": Object {
-        "Bucket": Object {
-          "Ref": "WindowsImageBuilderLogsEE3B5D59",
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": Object {
+          "Ref": "JenkinsVpcPublicSubnet1NATGateway61484242",
         },
-        "PolicyDocument": Object {
-          "Statement": Array [
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet1RouteTable8832798D",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "JenkinsVpcPrivateSubnet1RouteTable8832798D": Object {
+      "Properties": Object {
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PrivateSubnet1",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "JenkinsVpcPrivateSubnet1RouteTableAssociation6D50BE5C": Object {
+      "Properties": Object {
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet1RouteTable8832798D",
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet1SubnetA4649557",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "JenkinsVpcPrivateSubnet1SubnetA4649557": Object {
+      "Properties": Object {
+        "AvailabilityZone": Object {
+          "Fn::Select": Array [
+            0,
             Object {
-              "Action": "s3:*",
-              "Effect": "Allow",
-              "Principal": Object {
-                "AWS": Object {
-                  "Fn::GetAtt": Array [
-                    "WindowsBuilderRole21C80FD6",
-                    "Arn",
-                  ],
-                },
-              },
-              "Resource": Array [
-                Object {
-                  "Fn::GetAtt": Array [
-                    "WindowsImageBuilderLogsEE3B5D59",
-                    "Arn",
-                  ],
-                },
-                Object {
-                  "Fn::Join": Array [
-                    "",
-                    Array [
-                      Object {
-                        "Fn::GetAtt": Array [
-                          "WindowsImageBuilderLogsEE3B5D59",
-                          "Arn",
-                        ],
-                      },
-                      "/*",
-                    ],
-                  ],
-                },
-              ],
+              "Fn::GetAZs": "",
             },
           ],
-          "Version": "2012-10-17",
+        },
+        "CidrBlock": "10.0.128.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": Array [
+          Object {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private",
+          },
+          Object {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private",
+          },
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PrivateSubnet1",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
         },
       },
-      "Type": "AWS::S3::BucketPolicy",
+      "Type": "AWS::EC2::Subnet",
+    },
+    "JenkinsVpcPrivateSubnet2DefaultRoute6C49A808": Object {
+      "Properties": Object {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": Object {
+          "Ref": "JenkinsVpcPublicSubnet2NATGateway37023BC4",
+        },
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet2RouteTable84EAFED6",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "JenkinsVpcPrivateSubnet2RouteTable84EAFED6": Object {
+      "Properties": Object {
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PrivateSubnet2",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "JenkinsVpcPrivateSubnet2RouteTableAssociation307FB5BA": Object {
+      "Properties": Object {
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet2RouteTable84EAFED6",
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPrivateSubnet2Subnet83638529",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "JenkinsVpcPrivateSubnet2Subnet83638529": Object {
+      "Properties": Object {
+        "AvailabilityZone": Object {
+          "Fn::Select": Array [
+            1,
+            Object {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.192.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": Array [
+          Object {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private",
+          },
+          Object {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private",
+          },
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PrivateSubnet2",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "JenkinsVpcPublicSubnet1DefaultRoute22F36C44": Object {
+      "DependsOn": Array [
+        "JenkinsVpcVPCGW56C1C88E",
+      ],
+      "Properties": Object {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": Object {
+          "Ref": "JenkinsVpcIGW7C2582A4",
+        },
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPublicSubnet1RouteTableC70BE40D",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "JenkinsVpcPublicSubnet1EIPD9EF1536": Object {
+      "Properties": Object {
+        "Domain": "vpc",
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet1",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::EIP",
+    },
+    "JenkinsVpcPublicSubnet1NATGateway61484242": Object {
+      "Properties": Object {
+        "AllocationId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsVpcPublicSubnet1EIPD9EF1536",
+            "AllocationId",
+          ],
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPublicSubnet1Subnet1ED9E091",
+        },
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet1",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::NatGateway",
+    },
+    "JenkinsVpcPublicSubnet1RouteTableAssociation53B3C4C3": Object {
+      "Properties": Object {
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPublicSubnet1RouteTableC70BE40D",
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPublicSubnet1Subnet1ED9E091",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "JenkinsVpcPublicSubnet1RouteTableC70BE40D": Object {
+      "Properties": Object {
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet1",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "JenkinsVpcPublicSubnet1Subnet1ED9E091": Object {
+      "Properties": Object {
+        "AvailabilityZone": Object {
+          "Fn::Select": Array [
+            0,
+            Object {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.0.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": Array [
+          Object {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public",
+          },
+          Object {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public",
+          },
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet1",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "JenkinsVpcPublicSubnet2DefaultRoute4CCC01E5": Object {
+      "DependsOn": Array [
+        "JenkinsVpcVPCGW56C1C88E",
+      ],
+      "Properties": Object {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": Object {
+          "Ref": "JenkinsVpcIGW7C2582A4",
+        },
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPublicSubnet2RouteTable81E9FDB1",
+        },
+      },
+      "Type": "AWS::EC2::Route",
+    },
+    "JenkinsVpcPublicSubnet2EIP683D7484": Object {
+      "Properties": Object {
+        "Domain": "vpc",
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet2",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::EIP",
+    },
+    "JenkinsVpcPublicSubnet2NATGateway37023BC4": Object {
+      "Properties": Object {
+        "AllocationId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsVpcPublicSubnet2EIP683D7484",
+            "AllocationId",
+          ],
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPublicSubnet2Subnet1686A654",
+        },
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet2",
+          },
+        ],
+      },
+      "Type": "AWS::EC2::NatGateway",
+    },
+    "JenkinsVpcPublicSubnet2RouteTable81E9FDB1": Object {
+      "Properties": Object {
+        "Tags": Array [
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet2",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::RouteTable",
+    },
+    "JenkinsVpcPublicSubnet2RouteTableAssociation072483D5": Object {
+      "Properties": Object {
+        "RouteTableId": Object {
+          "Ref": "JenkinsVpcPublicSubnet2RouteTable81E9FDB1",
+        },
+        "SubnetId": Object {
+          "Ref": "JenkinsVpcPublicSubnet2Subnet1686A654",
+        },
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    },
+    "JenkinsVpcPublicSubnet2Subnet1686A654": Object {
+      "Properties": Object {
+        "AvailabilityZone": Object {
+          "Fn::Select": Array [
+            1,
+            Object {
+              "Fn::GetAZs": "",
+            },
+          ],
+        },
+        "CidrBlock": "10.0.64.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": Array [
+          Object {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public",
+          },
+          Object {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public",
+          },
+          Object {
+            "Key": "Name",
+            "Value": "test/Jenkins Vpc/PublicSubnet2",
+          },
+        ],
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::Subnet",
+    },
+    "JenkinsVpcVPCGW56C1C88E": Object {
+      "Properties": Object {
+        "InternetGatewayId": Object {
+          "Ref": "JenkinsVpcIGW7C2582A4",
+        },
+        "VpcId": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::EC2::VPCGatewayAttachment",
     },
   },
 }

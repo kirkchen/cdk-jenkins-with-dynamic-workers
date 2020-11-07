@@ -91,9 +91,12 @@ const project = new AwsCdkTypeScriptApp({
   gitignore: ['.idea'],
   cdkDependencies: [
     '@aws-cdk/aws-ec2',
+    '@aws-cdk/aws-ecs',
+    '@aws-cdk/aws-ecs-patterns',
     '@aws-cdk/aws-iam',
     '@aws-cdk/aws-imagebuilder',
-    '@aws-cdk/aws-s3'
+    '@aws-cdk/aws-s3',
+    '@aws-cdk/aws-secretsmanager'
   ],
   devDeps: ['prettier']
 })

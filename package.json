@@ -44,9 +44,12 @@
   "dependencies": {
     "@aws-cdk/assert": "^1.63.0",
     "@aws-cdk/aws-ec2": "^1.63.0",
+    "@aws-cdk/aws-ecs": "^1.63.0",
+    "@aws-cdk/aws-ecs-patterns": "^1.63.0",
     "@aws-cdk/aws-iam": "^1.63.0",
     "@aws-cdk/aws-imagebuilder": "^1.63.0",
     "@aws-cdk/aws-s3": "^1.63.0",
+    "@aws-cdk/aws-secretsmanager": "^1.63.0",
     "@aws-cdk/core": "^1.63.0"
   },
   "bundledDependencies": [],
