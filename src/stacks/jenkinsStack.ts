@@ -1,31 +1,31 @@
-import { join } from 'path'
-import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2'
-import { Cluster, ContainerImage, Secret as EcsSecret } from '@aws-cdk/aws-ecs'
-import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns'
+import { join } from 'path';
+import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import { Cluster, ContainerImage, Secret as EcsSecret } from '@aws-cdk/aws-ecs';
+import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import {
   Effect,
   ManagedPolicy,
   PolicyStatement,
   Role,
-  ServicePrincipal
-} from '@aws-cdk/aws-iam'
-import { Secret } from '@aws-cdk/aws-secretsmanager'
-import { Construct, Stack, StackProps } from '@aws-cdk/core'
+  ServicePrincipal,
+} from '@aws-cdk/aws-iam';
+import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { Construct, Stack, StackProps } from '@aws-cdk/core';
 
 export class JenkinsStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps = {}) {
-    super(scope, id, props)
+    super(scope, id, props);
 
-    const vpc = new Vpc(this, 'Jenkins Vpc', { maxAzs: 2 })
+    const vpc = new Vpc(this, 'Jenkins Vpc', { maxAzs: 2 });
 
     const cluster = new Cluster(this, 'Jenkins Cluster', {
-      vpc
-    })
+      vpc,
+    });
 
     const taskRole = new Role(this, 'Jenkins Task Role', {
       roleName: 'JenkinsTaskRole',
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
-    })
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
 
     taskRole.addManagedPolicy(
       new ManagedPolicy(this, 'Jenkins Dynamic Slave Policy', {
@@ -53,32 +53,32 @@ export class JenkinsStack extends Stack {
               'ec2:DescribeSubnets',
               'ec2:GetPasswordData',
               'iam:ListInstanceProfilesForRole',
-              'iam:PassRole'
+              'iam:PassRole',
             ],
-            resources: ['*']
-          })
-        ]
-      })
-    )
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
 
     const image = ContainerImage.fromAsset(
-      join(__dirname, '..', '..', 'docker/')
-    )
-    const githubToken = Secret.fromSecretArn(
+      join(__dirname, '..', '..', 'docker/'),
+    );
+    const githubToken = Secret.fromSecretCompleteArn(
       this,
       'Github Token',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK'
-    )
-    const awsKeyPair = Secret.fromSecretArn(
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK',
+    );
+    const awsKeyPair = Secret.fromSecretCompleteArn(
       this,
       'AWS Keypair',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI'
-    )
-    const windowsPassword = Secret.fromSecretArn(
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI',
+    );
+    const windowsPassword = Secret.fromSecretCompleteArn(
       this,
       'Windows Password',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w'
-    )
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w',
+    );
 
     const alb = new ApplicationLoadBalancedFargateService(
       this,
@@ -91,8 +91,8 @@ export class JenkinsStack extends Stack {
           SecurityGroup.fromSecurityGroupId(
             this,
             'Vpc Default Security Group',
-            vpc.vpcDefaultSecurityGroup
-          )
+            vpc.vpcDefaultSecurityGroup,
+          ),
         ],
         taskImageOptions: {
           image,
@@ -108,23 +108,23 @@ export class JenkinsStack extends Stack {
             AWS_JENKINS_WINDOWS_SLAVE_ACCOUNT: 'jenkins',
             AWS_JENKINS_WINDOWS_SLAVE_SUBNETS: vpc.privateSubnets
               .map((i) => i.subnetId)
-              .join(' ')
+              .join(' '),
           },
           secrets: {
             AWS_JENKINS_WINDOWS_SLAVE_PASSWORD: EcsSecret.fromSecretsManager(
-              windowsPassword
+              windowsPassword,
             ),
             GITHUB_TOKEN: EcsSecret.fromSecretsManager(githubToken),
-            AWS_KEYPAIR: EcsSecret.fromSecretsManager(awsKeyPair)
-          }
+            AWS_KEYPAIR: EcsSecret.fromSecretsManager(awsKeyPair),
+          },
         },
         memoryLimitMiB: 4096,
-        publicLoadBalancer: true
-      }
-    )
+        publicLoadBalancer: true,
+      },
+    );
 
     alb.targetGroup.configureHealthCheck({
-      path: '/login'
-    })
+      path: '/login',
+    });
   }
 }

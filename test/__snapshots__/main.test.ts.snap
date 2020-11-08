@@ -103,8 +103,8 @@ Object {
             "SecurityGroups": Array [
               Object {
                 "Fn::GetAtt": Array [
-                  "JenkinsServiceSecurityGroup15C98714",
-                  "GroupId",
+                  "JenkinsVpc168DFB43",
+                  "DefaultSecurityGroup",
                 ],
               },
             ],
@@ -205,13 +205,13 @@ Object {
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "JenkinsServiceLBSecurityGrouptotestJenkinsServiceSecurityGroupB46325198080759B2C38": Object {
+    "JenkinsServiceLBSecurityGrouptotestVpcDefaultSecurityGroupEBE97571808024D4BCAE": Object {
       "Properties": Object {
         "Description": "Load balancer to target",
         "DestinationSecurityGroupId": Object {
           "Fn::GetAtt": Array [
-            "JenkinsServiceSecurityGroup15C98714",
-            "GroupId",
+            "JenkinsVpc168DFB43",
+            "DefaultSecurityGroup",
           ],
         },
         "FromPort": 8080,
@@ -225,43 +225,6 @@ Object {
         "ToPort": 8080,
       },
       "Type": "AWS::EC2::SecurityGroupEgress",
-    },
-    "JenkinsServiceSecurityGroup15C98714": Object {
-      "Properties": Object {
-        "GroupDescription": "test/Jenkins Service/Service/SecurityGroup",
-        "SecurityGroupEgress": Array [
-          Object {
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow all outbound traffic by default",
-            "IpProtocol": "-1",
-          },
-        ],
-        "VpcId": Object {
-          "Ref": "JenkinsVpc168DFB43",
-        },
-      },
-      "Type": "AWS::EC2::SecurityGroup",
-    },
-    "JenkinsServiceSecurityGroupfromtestJenkinsServiceLBSecurityGroupF5E547098080EFED46CF": Object {
-      "Properties": Object {
-        "Description": "Load balancer to target",
-        "FromPort": 8080,
-        "GroupId": Object {
-          "Fn::GetAtt": Array [
-            "JenkinsServiceSecurityGroup15C98714",
-            "GroupId",
-          ],
-        },
-        "IpProtocol": "tcp",
-        "SourceSecurityGroupId": Object {
-          "Fn::GetAtt": Array [
-            "JenkinsServiceLBSecurityGroup0A6E5083",
-            "GroupId",
-          ],
-        },
-        "ToPort": 8080,
-      },
-      "Type": "AWS::EC2::SecurityGroupIngress",
     },
     "JenkinsServiceTaskDef27CAAC73": Object {
       "Properties": Object {
@@ -286,7 +249,7 @@ Object {
               },
               Object {
                 "Name": "JENKINS_HOST",
-                "Value": "http://jenki-jenki-6gwhoxq0fa9m-1153059349.ap-northeast-1.elb.amazonaws.com/",
+                "Value": "http://localhost:8080",
               },
               Object {
                 "Name": "AWS_JENKINS_WINDOWS_SLAVE_AMI",
@@ -330,7 +293,7 @@ Object {
                   Object {
                     "Ref": "AWS::URLSuffix",
                   },
-                  "/aws-cdk/assets:e701e9952a593ecd80004c725c82743e861b46193e9b107d8f2360226aa6c148",
+                  "/aws-cdk/assets:5ff29ec1590c9f0e7b80aa341aad838c6c116b36aaf550a7428a03989dd99b58",
                 ],
               ],
             },
@@ -904,6 +867,27 @@ Object {
         },
       },
       "Type": "AWS::EC2::VPCGatewayAttachment",
+    },
+    "VpcDefaultSecurityGroupfromtestJenkinsServiceLBSecurityGroupF5E547098080A02D4C6C": Object {
+      "Properties": Object {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsVpc168DFB43",
+            "DefaultSecurityGroup",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsServiceLBSecurityGroup0A6E5083",
+            "GroupId",
+          ],
+        },
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
     },
   },
 }

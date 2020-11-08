@@ -5,23 +5,10 @@ schemaVersion: 1.0
 phases:
   - name: build
     steps:
-      - name: InstallChocolatey
-        action: ExecutePowerShell
-        inputs:
-          commands:
-            - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
       - name: InstallBuildTools
         action: ExecutePowerShell
         inputs:
           commands:
+            - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
             - cinst git -y
             - cinst jdk8 -y
-      - name: AddTooslPathToSystemPath
-        action: ExecutePowerShell
-        loop:
-          name: ToolsLoop
-          forEach:
-            - C:\Program Files\Git\bin
-        inputs:
-          commands:
-            - $env:Path += ";{{loop.value}}"
