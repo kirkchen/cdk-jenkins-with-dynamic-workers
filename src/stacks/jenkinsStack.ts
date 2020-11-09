@@ -121,6 +121,15 @@ export class JenkinsStack extends Stack {
     jenkinsAdminPasswordSecretArn,
     jenkinsWindowsWorkerPasswordSecretArn
   }: CreateSecretsProps) {
+    if (
+      !githubTokenSecretArn ||
+      !awsKeyPairSecretArn ||
+      !jenkinsAdminPasswordSecretArn ||
+      !jenkinsWindowsWorkerPasswordSecretArn
+    ) {
+      return undefined
+    }
+
     const githubToken = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}GithubToken`,
