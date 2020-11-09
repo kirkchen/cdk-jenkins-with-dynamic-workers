@@ -1,39 +1,156 @@
-import { join } from 'path';
-import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
-import { Cluster, ContainerImage, Secret as EcsSecret } from '@aws-cdk/aws-ecs';
-import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
+import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2'
+import {
+  Cluster,
+  ContainerImage,
+  LogDriver,
+  Secret as EcsSecret
+} from '@aws-cdk/aws-ecs'
+import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns'
 import {
   Effect,
   ManagedPolicy,
   PolicyStatement,
   Role,
-  ServicePrincipal,
-} from '@aws-cdk/aws-iam';
-import { Secret } from '@aws-cdk/aws-secretsmanager';
-import { DnsRecordType } from '@aws-cdk/aws-servicediscovery';
-import { Construct, Stack, StackProps } from '@aws-cdk/core';
+  ServicePrincipal
+} from '@aws-cdk/aws-iam'
+import { LogGroup, RetentionDays } from '@aws-cdk/aws-logs'
+import { Secret } from '@aws-cdk/aws-secretsmanager'
+import { DnsRecordType } from '@aws-cdk/aws-servicediscovery'
+import { Construct, Stack, StackProps } from '@aws-cdk/core'
+
+interface CreateClusterProps {
+  vpc: Vpc
+  defaultNamespace: string
+}
 
 export class JenkinsStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps = {}) {
-    super(scope, id, props);
+    super(scope, id, props)
 
-    const vpc = new Vpc(this, 'Jenkins Vpc', { maxAzs: 2 });
+    const vpc = this.createVpc()
 
-    const cluster = new Cluster(this, 'Jenkins Cluster', {
-      vpc,
-      defaultCloudMapNamespace: {
-        name: 'jenkins',
-      },
-    });
+    const cluster = this.createCluster({
+      vpc: vpc,
+      defaultNamespace: 'jenkins'
+    })
 
-    const taskRole = new Role(this, 'Jenkins Task Role', {
-      roleName: 'JenkinsTaskRole',
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
-    });
+    const logGroup = new LogGroup(this, `${this.stackName}JenkinsLogGroup`, {
+      retention: RetentionDays.ONE_DAY
+    })
+
+    const executionRole = this.createExecutionRole()
+    const jenkinsLeaderTaskRole = this.createJenkinsLeaderTaskRole()
+    const jenkinsWorkerTaskRole = this.createJenkinsWorkerTaskRole()
+
+    const vpcDefaultSecurityGroup = SecurityGroup.fromSecurityGroupId(
+      this,
+      `${this.stackName}DefaultSecurityGroup`,
+      vpc.vpcDefaultSecurityGroup
+    )
+    const subnets = vpc.privateSubnets.map((i) => i.subnetId)
+
+    const secrets = this.createSecrets()
+
+    const fargateService = new ApplicationLoadBalancedFargateService(
+      this,
+      `${this.stackName}JenkinsService`,
+      {
+        cluster,
+        cpu: 2048,
+        memoryLimitMiB: 4096,
+        desiredCount: 1,
+        securityGroups: [vpcDefaultSecurityGroup],
+        taskImageOptions: {
+          image: ContainerImage.fromAsset('./docker/jenkinsLeader'),
+          containerPort: 8080,
+          executionRole,
+          taskRole: jenkinsLeaderTaskRole,
+          logDriver: LogDriver.awsLogs({
+            logGroup,
+            streamPrefix: 'jenkins-leader'
+          }),
+          environment: {
+            GITHUB_USERNAME: 'kirkchen',
+            GITHUB_REPO: 'jenkins-as-code-example',
+            JENKINS_ADMIN_ACCOUNT: 'admin',
+            JENKINS_WINDOWS_WORKER_AMI: 'ami-0209072377fde2f62',
+            JENKINS_WINDOWS_WORKER_ACCOUNT: 'jenkins',
+            JENKINS_WINDOWS_WORKER_SUBNETS: subnets.join(' '),
+            JENKINS_LINUX_WORKER_ECS_CLUSTER_ARN: cluster.clusterArn,
+            JENKINS_LINUX_WORKER_SECURITY_GROUPS:
+              vpcDefaultSecurityGroup.securityGroupId,
+            JENKINS_LINUX_WORKER_SUBNETS: subnets.join(','),
+            JENKINS_LINUX_WORKER_TASK_ROLE: jenkinsWorkerTaskRole.roleArn,
+            JENKINS_LINUX_WORKER_EXECUTION_ROLE: executionRole.roleArn,
+            JENKINS_LINUX_WORKER_LOGS_GROUP: logGroup.logGroupName
+          },
+          secrets
+        },
+        publicLoadBalancer: true,
+        cloudMapOptions: { name: 'leader', dnsRecordType: DnsRecordType.A }
+      }
+    )
+
+    fargateService.targetGroup.configureHealthCheck({
+      path: '/login'
+    })
+
+    fargateService.service.taskDefinition.defaultContainer?.addPortMappings({
+      containerPort: 50000,
+      hostPort: 50000
+    })
+  }
+
+  private createSecrets() {
+    const githubToken = Secret.fromSecretCompleteArn(
+      this,
+      `${this.stackName}GithubToken`,
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK'
+    )
+    const awsKeyPair = Secret.fromSecretCompleteArn(
+      this,
+      `${this.stackName}AwsKeyPair`,
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI'
+    )
+    const jenkinsAdminPassword = Secret.fromSecretCompleteArn(
+      this,
+      `${this.stackName}JenkinsAdminPassword`,
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-admin-password-J0Pdn6'
+    )
+    const jenkinsWindowsWorkerPassword = Secret.fromSecretCompleteArn(
+      this,
+      `${this.stackName}JenkinsWindowsWorkerPassword`,
+      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w'
+    )
+
+    return {
+      AWS_KEYPAIR: EcsSecret.fromSecretsManager(awsKeyPair),
+      GITHUB_TOKEN: EcsSecret.fromSecretsManager(githubToken),
+      JENKINS_ADMIN_PASSWORD: EcsSecret.fromSecretsManager(
+        jenkinsAdminPassword
+      ),
+      JENKINS_WINDOWS_WORKER_PASSWORD: EcsSecret.fromSecretsManager(
+        jenkinsWindowsWorkerPassword
+      )
+    }
+  }
+
+  private createJenkinsWorkerTaskRole(): Role {
+    return new Role(this, `${this.stackName}JenkinsWorkerTaskRole`, {
+      roleName: `${this.stackName}JenkinsWorkerTaskRole`,
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+    })
+  }
+
+  private createJenkinsLeaderTaskRole(): Role {
+    const taskRole = new Role(this, `${this.stackName}JenkinsLeaderTaskRole`, {
+      roleName: `${this.stackName}JenkinsLeaderTaskRole`,
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+    })
 
     taskRole.addManagedPolicy(
-      new ManagedPolicy(this, 'Jenkins Dynamic Windows Slave Policy', {
-        managedPolicyName: 'JenkinsDynamicWindowsSlavePolicy',
+      new ManagedPolicy(this, `${this.stackName}CreateEC2WorkerPolicy`, {
+        managedPolicyName: `${this.stackName}CreateEC2WorkerPolicy`,
         statements: [
           new PolicyStatement({
             effect: Effect.ALLOW,
@@ -57,17 +174,18 @@ export class JenkinsStack extends Stack {
               'ec2:DescribeSubnets',
               'ec2:GetPasswordData',
               'iam:ListInstanceProfilesForRole',
-              'iam:PassRole',
+              'iam:PassRole'
             ],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
+            resources: ['*']
+          })
+        ]
+      })
+    )
 
+    // TODO: Make policy stricter
     taskRole.addManagedPolicy(
-      new ManagedPolicy(this, 'Jenkins Dynamic Linux Slave Policy', {
-        managedPolicyName: 'JenkinsDynamicLinuxSlavePolicy',
+      new ManagedPolicy(this, `${this.stackName}CreateECSWorkerPolicy`, {
+        managedPolicyName: `${this.stackName}CreateECSWorkerPolicy`,
         statements: [
           new PolicyStatement({
             effect: Effect.ALLOW,
@@ -81,88 +199,42 @@ export class JenkinsStack extends Stack {
               'ecs:ListContainerInstances',
               'ecs:RunTask',
               'ecs:StopTask',
-              'ecs:DescribeTasks',
+              'ecs:DescribeTasks'
             ],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
+            resources: ['*']
+          })
+        ]
+      })
+    )
 
-    const image = ContainerImage.fromAsset(
-      join(__dirname, '..', '..', 'docker/'),
-    );
-    const githubToken = Secret.fromSecretCompleteArn(
-      this,
-      'Github Token',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK',
-    );
-    const awsKeyPair = Secret.fromSecretCompleteArn(
-      this,
-      'AWS Keypair',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI',
-    );
-    const windowsPassword = Secret.fromSecretCompleteArn(
-      this,
-      'Windows Password',
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w',
-    );
+    return taskRole
+  }
 
-    const vpcDefaultSecurityGroup = SecurityGroup.fromSecurityGroupId(
-      this,
-      'Vpc Default Security Group',
-      vpc.vpcDefaultSecurityGroup,
-    );
-    const subnets = vpc.privateSubnets.map((i) => i.subnetId);
+  private createExecutionRole(): Role {
+    const executionRole = new Role(this, `${this.stackName}ExecutionRole`, {
+      roleName: `${this.stackName}ExecutionRole`,
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+    })
 
-    const alb = new ApplicationLoadBalancedFargateService(
-      this,
-      'Jenkins Service',
-      {
-        cluster,
-        cpu: 2048,
-        desiredCount: 1,
-        securityGroups: [vpcDefaultSecurityGroup],
-        taskImageOptions: {
-          image,
-          containerPort: 8080,
-          taskRole,
-          environment: {
-            JENKINS_ADMIN_ID: 'admin',
-            JENKINS_ADMIN_PASSWORD: 'password',
-            GITHUB_USERNAME: 'kirkchen',
-            GITHUB_REPO: 'kirkchen/jenkins-as-code-example',
-            JENKINS_HOST: 'http://localhost:8080',
-            AWS_JENKINS_WINDOWS_SLAVE_AMI: 'ami-0209072377fde2f62',
-            AWS_JENKINS_WINDOWS_SLAVE_ACCOUNT: 'jenkins',
-            AWS_JENKINS_WINDOWS_SLAVE_SUBNETS: subnets.join(' '),
-            AWS_ECS_CLUSTER_ARN: cluster.clusterArn,
-            AWS_JENKINS_LINUX_SLAVE_SECURITY_GROUPS:
-              vpcDefaultSecurityGroup.securityGroupId,
-            AWS_JENKINS_LINUX_SLAVE_SUBNETS: subnets.join(','),
-            AWS_JENKINS_LINUX_SLAVE_TASK_ROLE: taskRole.roleArn,
-          },
-          secrets: {
-            AWS_JENKINS_WINDOWS_SLAVE_PASSWORD: EcsSecret.fromSecretsManager(
-              windowsPassword,
-            ),
-            GITHUB_TOKEN: EcsSecret.fromSecretsManager(githubToken),
-            AWS_KEYPAIR: EcsSecret.fromSecretsManager(awsKeyPair),
-          },
-        },
-        memoryLimitMiB: 4096,
-        publicLoadBalancer: true,
-        cloudMapOptions: { name: 'leader', dnsRecordType: DnsRecordType.A },
-      },
-    );
+    executionRole.addManagedPolicy(
+      ManagedPolicy.fromAwsManagedPolicyName(
+        'service-role/AmazonECSTaskExecutionRolePolicy'
+      )
+    )
 
-    alb.targetGroup.configureHealthCheck({
-      path: '/login',
-    });
+    return executionRole
+  }
 
-    alb.service.taskDefinition.defaultContainer?.addPortMappings({
-      containerPort: 50000,
-      hostPort: 50000,
-    });
+  private createCluster({ vpc, defaultNamespace }: CreateClusterProps) {
+    return new Cluster(this, `${this.stackName}Cluster`, {
+      vpc,
+      defaultCloudMapNamespace: {
+        name: defaultNamespace
+      }
+    })
+  }
+
+  private createVpc() {
+    return new Vpc(this, `${this.stackName}Vpc`, {})
   }
 }

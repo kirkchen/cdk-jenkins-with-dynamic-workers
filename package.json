@@ -48,6 +48,7 @@
     "@aws-cdk/aws-ecs-patterns": "^1.63.0",
     "@aws-cdk/aws-iam": "^1.63.0",
     "@aws-cdk/aws-imagebuilder": "^1.63.0",
+    "@aws-cdk/aws-logs": "^1.63.0",
     "@aws-cdk/aws-s3": "^1.63.0",
     "@aws-cdk/aws-secretsmanager": "^1.63.0",
     "@aws-cdk/aws-servicediscovery": "^1.63.0",
