@@ -96,7 +96,8 @@ const project = new AwsCdkTypeScriptApp({
     '@aws-cdk/aws-iam',
     '@aws-cdk/aws-imagebuilder',
     '@aws-cdk/aws-s3',
-    '@aws-cdk/aws-secretsmanager'
+    '@aws-cdk/aws-secretsmanager',
+    '@aws-cdk/aws-servicediscovery'
   ],
   devDeps: ['prettier']
 })

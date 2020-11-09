@@ -10,6 +10,7 @@ import {
   ServicePrincipal,
 } from '@aws-cdk/aws-iam';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { DnsRecordType } from '@aws-cdk/aws-servicediscovery';
 import { Construct, Stack, StackProps } from '@aws-cdk/core';
 
 export class JenkinsStack extends Stack {
@@ -20,6 +21,9 @@ export class JenkinsStack extends Stack {
 
     const cluster = new Cluster(this, 'Jenkins Cluster', {
       vpc,
+      defaultCloudMapNamespace: {
+        name: 'jenkins',
+      },
     });
 
     const taskRole = new Role(this, 'Jenkins Task Role', {
@@ -28,8 +32,8 @@ export class JenkinsStack extends Stack {
     });
 
     taskRole.addManagedPolicy(
-      new ManagedPolicy(this, 'Jenkins Dynamic Slave Policy', {
-        managedPolicyName: 'JenkinsDynamicSlavePolicy',
+      new ManagedPolicy(this, 'Jenkins Dynamic Windows Slave Policy', {
+        managedPolicyName: 'JenkinsDynamicWindowsSlavePolicy',
         statements: [
           new PolicyStatement({
             effect: Effect.ALLOW,
@@ -61,6 +65,30 @@ export class JenkinsStack extends Stack {
       }),
     );
 
+    taskRole.addManagedPolicy(
+      new ManagedPolicy(this, 'Jenkins Dynamic Linux Slave Policy', {
+        managedPolicyName: 'JenkinsDynamicLinuxSlavePolicy',
+        statements: [
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+              'ecs:RegisterTaskDefinition',
+              'ecs:ListClusters',
+              'ecs:DescribeContainerInstances',
+              'ecs:ListTaskDefinitions',
+              'ecs:DescribeTaskDefinition',
+              'ecs:DeregisterTaskDefinition',
+              'ecs:ListContainerInstances',
+              'ecs:RunTask',
+              'ecs:StopTask',
+              'ecs:DescribeTasks',
+            ],
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
+
     const image = ContainerImage.fromAsset(
       join(__dirname, '..', '..', 'docker/'),
     );
@@ -80,6 +108,13 @@ export class JenkinsStack extends Stack {
       'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w',
     );
 
+    const vpcDefaultSecurityGroup = SecurityGroup.fromSecurityGroupId(
+      this,
+      'Vpc Default Security Group',
+      vpc.vpcDefaultSecurityGroup,
+    );
+    const subnets = vpc.privateSubnets.map((i) => i.subnetId);
+
     const alb = new ApplicationLoadBalancedFargateService(
       this,
       'Jenkins Service',
@@ -87,13 +122,7 @@ export class JenkinsStack extends Stack {
         cluster,
         cpu: 2048,
         desiredCount: 1,
-        securityGroups: [
-          SecurityGroup.fromSecurityGroupId(
-            this,
-            'Vpc Default Security Group',
-            vpc.vpcDefaultSecurityGroup,
-          ),
-        ],
+        securityGroups: [vpcDefaultSecurityGroup],
         taskImageOptions: {
           image,
           containerPort: 8080,
@@ -106,9 +135,12 @@ export class JenkinsStack extends Stack {
             JENKINS_HOST: 'http://localhost:8080',
             AWS_JENKINS_WINDOWS_SLAVE_AMI: 'ami-0209072377fde2f62',
             AWS_JENKINS_WINDOWS_SLAVE_ACCOUNT: 'jenkins',
-            AWS_JENKINS_WINDOWS_SLAVE_SUBNETS: vpc.privateSubnets
-              .map((i) => i.subnetId)
-              .join(' '),
+            AWS_JENKINS_WINDOWS_SLAVE_SUBNETS: subnets.join(' '),
+            AWS_ECS_CLUSTER_ARN: cluster.clusterArn,
+            AWS_JENKINS_LINUX_SLAVE_SECURITY_GROUPS:
+              vpcDefaultSecurityGroup.securityGroupId,
+            AWS_JENKINS_LINUX_SLAVE_SUBNETS: subnets.join(','),
+            AWS_JENKINS_LINUX_SLAVE_TASK_ROLE: taskRole.roleArn,
           },
           secrets: {
             AWS_JENKINS_WINDOWS_SLAVE_PASSWORD: EcsSecret.fromSecretsManager(
@@ -120,11 +152,17 @@ export class JenkinsStack extends Stack {
         },
         memoryLimitMiB: 4096,
         publicLoadBalancer: true,
+        cloudMapOptions: { name: 'leader', dnsRecordType: DnsRecordType.A },
       },
     );
 
     alb.targetGroup.configureHealthCheck({
       path: '/login',
+    });
+
+    alb.service.taskDefinition.defaultContainer?.addPortMappings({
+      containerPort: 50000,
+      hostPort: 50000,
     });
   }
 }

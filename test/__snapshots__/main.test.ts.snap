@@ -32,10 +32,48 @@ Object {
     "JenkinsCluster35F91C63": Object {
       "Type": "AWS::ECS::Cluster",
     },
-    "JenkinsDynamicSlavePolicyDBECFF2D": Object {
+    "JenkinsClusterDefaultServiceDiscoveryNamespace81974B4B": Object {
+      "Properties": Object {
+        "Name": "jenkins",
+        "Vpc": Object {
+          "Ref": "JenkinsVpc168DFB43",
+        },
+      },
+      "Type": "AWS::ServiceDiscovery::PrivateDnsNamespace",
+    },
+    "JenkinsDynamicLinuxSlavePolicy907C9165": Object {
       "Properties": Object {
         "Description": "",
-        "ManagedPolicyName": "JenkinsDynamicSlavePolicy",
+        "ManagedPolicyName": "JenkinsDynamicLinuxSlavePolicy",
+        "Path": "/",
+        "PolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": Array [
+                "ecs:RegisterTaskDefinition",
+                "ecs:ListClusters",
+                "ecs:DescribeContainerInstances",
+                "ecs:ListTaskDefinitions",
+                "ecs:DescribeTaskDefinition",
+                "ecs:DeregisterTaskDefinition",
+                "ecs:ListContainerInstances",
+                "ecs:RunTask",
+                "ecs:StopTask",
+                "ecs:DescribeTasks",
+              ],
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::ManagedPolicy",
+    },
+    "JenkinsDynamicWindowsSlavePolicy7FC901B9": Object {
+      "Properties": Object {
+        "Description": "",
+        "ManagedPolicyName": "JenkinsDynamicWindowsSlavePolicy",
         "Path": "/",
         "PolicyDocument": Object {
           "Statement": Array [
@@ -118,11 +156,51 @@ Object {
             ],
           },
         },
+        "ServiceRegistries": Array [
+          Object {
+            "RegistryArn": Object {
+              "Fn::GetAtt": Array [
+                "JenkinsServiceCloudmapServiceB037C324",
+                "Arn",
+              ],
+            },
+          },
+        ],
         "TaskDefinition": Object {
           "Ref": "JenkinsServiceTaskDef27CAAC73",
         },
       },
       "Type": "AWS::ECS::Service",
+    },
+    "JenkinsServiceCloudmapServiceB037C324": Object {
+      "Properties": Object {
+        "DnsConfig": Object {
+          "DnsRecords": Array [
+            Object {
+              "TTL": 60,
+              "Type": "A",
+            },
+          ],
+          "NamespaceId": Object {
+            "Fn::GetAtt": Array [
+              "JenkinsClusterDefaultServiceDiscoveryNamespace81974B4B",
+              "Id",
+            ],
+          },
+          "RoutingPolicy": "MULTIVALUE",
+        },
+        "HealthCheckCustomConfig": Object {
+          "FailureThreshold": 1,
+        },
+        "Name": "leader",
+        "NamespaceId": Object {
+          "Fn::GetAtt": Array [
+            "JenkinsClusterDefaultServiceDiscoveryNamespace81974B4B",
+            "Id",
+          ],
+        },
+      },
+      "Type": "AWS::ServiceDiscovery::Service",
     },
     "JenkinsServiceLB860F7FEB": Object {
       "DependsOn": Array [
@@ -276,6 +354,50 @@ Object {
                   ],
                 },
               },
+              Object {
+                "Name": "AWS_ECS_CLUSTER_ARN",
+                "Value": Object {
+                  "Fn::GetAtt": Array [
+                    "JenkinsCluster35F91C63",
+                    "Arn",
+                  ],
+                },
+              },
+              Object {
+                "Name": "AWS_JENKINS_LINUX_SLAVE_SECURITY_GROUPS",
+                "Value": Object {
+                  "Fn::GetAtt": Array [
+                    "JenkinsVpc168DFB43",
+                    "DefaultSecurityGroup",
+                  ],
+                },
+              },
+              Object {
+                "Name": "AWS_JENKINS_LINUX_SLAVE_SUBNETS",
+                "Value": Object {
+                  "Fn::Join": Array [
+                    "",
+                    Array [
+                      Object {
+                        "Ref": "JenkinsVpcPrivateSubnet1SubnetA4649557",
+                      },
+                      ",",
+                      Object {
+                        "Ref": "JenkinsVpcPrivateSubnet2Subnet83638529",
+                      },
+                    ],
+                  ],
+                },
+              },
+              Object {
+                "Name": "AWS_JENKINS_LINUX_SLAVE_TASK_ROLE",
+                "Value": Object {
+                  "Fn::GetAtt": Array [
+                    "JenkinsTaskRoleC937B2F3",
+                    "Arn",
+                  ],
+                },
+              },
             ],
             "Essential": true,
             "Image": Object {
@@ -293,7 +415,7 @@ Object {
                   Object {
                     "Ref": "AWS::URLSuffix",
                   },
-                  "/aws-cdk/assets:5ff29ec1590c9f0e7b80aa341aad838c6c116b36aaf550a7428a03989dd99b58",
+                  "/aws-cdk/assets:95c3acedfe206efce1c3bc5df3c854c62401fbc63674fc9b323d60d926f1ed78",
                 ],
               ],
             },
@@ -313,6 +435,11 @@ Object {
             "PortMappings": Array [
               Object {
                 "ContainerPort": 8080,
+                "Protocol": "tcp",
+              },
+              Object {
+                "ContainerPort": 50000,
+                "HostPort": 50000,
                 "Protocol": "tcp",
               },
             ],
@@ -478,7 +605,10 @@ Object {
         },
         "ManagedPolicyArns": Array [
           Object {
-            "Ref": "JenkinsDynamicSlavePolicyDBECFF2D",
+            "Ref": "JenkinsDynamicWindowsSlavePolicy7FC901B9",
+          },
+          Object {
+            "Ref": "JenkinsDynamicLinuxSlavePolicy907C9165",
           },
         ],
         "RoleName": "JenkinsTaskRole",

@@ -34,6 +34,24 @@ jenkins:
               - name: "Name"
                 value: "Jenkins-Dynamic-Windows"
             type: T3Medium
+    - ecs:
+        credentialsId: false
+        cluster: ${AWS_ECS_CLUSTER_ARN}
+        jenkinsUrl: "http://leader.jenkins:8080"
+        name: "ecs"
+        regionName: "ap-northeast-1"
+        templates:
+          - cpu: 512
+            memoryReservation: 1024
+            image: "jenkins/inbound-agent"
+            label: "linux"
+            launchType: "FARGATE"
+            platformVersion: "LATEST"
+            remoteFSRoot: "/home/jenkins"
+            securityGroups: ${AWS_JENKINS_LINUX_SLAVE_SECURITY_GROUPS}
+            subnets: ${AWS_JENKINS_LINUX_SLAVE_SUBNETS}
+            taskrole: ${AWS_JENKINS_LINUX_SLAVE_TASK_ROLE}
+            templateName: "Jenkins-Dynamic-Linux"
 security:
   queueItemAuthenticator:
     authenticators:
