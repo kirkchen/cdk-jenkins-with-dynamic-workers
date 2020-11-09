@@ -23,8 +23,22 @@ interface CreateClusterProps {
   defaultNamespace: string
 }
 
+interface CreateSecretsProps {
+  githubTokenSecretArn: string
+  awsKeyPairSecretArn: string
+  jenkinsAdminPasswordSecretArn: string
+  jenkinsWindowsWorkerPasswordSecretArn: string
+}
+
+interface JenkinsStackProps extends StackProps {
+  githubTokenSecretArn: string
+  awsKeyPairSecretArn: string
+  jenkinsAdminPasswordSecretArn: string
+  jenkinsWindowsWorkerPasswordSecretArn: string
+}
+
 export class JenkinsStack extends Stack {
-  constructor(scope: Construct, id: string, props: StackProps = {}) {
+  constructor(scope: Construct, id: string, props: JenkinsStackProps) {
     super(scope, id, props)
 
     const vpc = this.createVpc()
@@ -49,7 +63,7 @@ export class JenkinsStack extends Stack {
     )
     const subnets = vpc.privateSubnets.map((i) => i.subnetId)
 
-    const secrets = this.createSecrets()
+    const secrets = this.createSecrets(props)
 
     const fargateService = new ApplicationLoadBalancedFargateService(
       this,
@@ -101,26 +115,31 @@ export class JenkinsStack extends Stack {
     })
   }
 
-  private createSecrets() {
+  private createSecrets({
+    githubTokenSecretArn,
+    awsKeyPairSecretArn,
+    jenkinsAdminPasswordSecretArn,
+    jenkinsWindowsWorkerPasswordSecretArn
+  }: CreateSecretsProps) {
     const githubToken = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}GithubToken`,
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:github/token-dNPuGK'
+      githubTokenSecretArn
     )
     const awsKeyPair = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}AwsKeyPair`,
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/keypair-ZOUxvI'
+      awsKeyPairSecretArn
     )
     const jenkinsAdminPassword = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}JenkinsAdminPassword`,
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-admin-password-J0Pdn6'
+      jenkinsAdminPasswordSecretArn
     )
     const jenkinsWindowsWorkerPassword = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}JenkinsWindowsWorkerPassword`,
-      'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:aws/jenkins-windows-slave-password-Ftda4w'
+      jenkinsWindowsWorkerPasswordSecretArn
     )
 
     return {
