@@ -1,4 +1,4 @@
-const { AwsCdkTypeScriptApp } = require('projen')
+const {AwsCdkTypeScriptApp} = require('projen')
 
 const project = new AwsCdkTypeScriptApp({
   cdkVersion: '1.63.0',
@@ -100,7 +100,6 @@ const project = new AwsCdkTypeScriptApp({
     '@aws-cdk/aws-secretsmanager',
     '@aws-cdk/aws-servicediscovery'
   ],
-  devDeps: ['prettier']
 })
 
 const common_exclude = ['cdk.context.json'];

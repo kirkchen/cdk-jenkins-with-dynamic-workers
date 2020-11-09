@@ -1,69 +1,69 @@
-import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2'
+import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
 import {
   Cluster,
   ContainerImage,
   LogDriver,
-  Secret as EcsSecret
-} from '@aws-cdk/aws-ecs'
-import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns'
+  Secret as EcsSecret,
+} from '@aws-cdk/aws-ecs';
+import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import {
   Effect,
   ManagedPolicy,
   PolicyStatement,
   Role,
-  ServicePrincipal
-} from '@aws-cdk/aws-iam'
-import { LogGroup, RetentionDays } from '@aws-cdk/aws-logs'
-import { Secret } from '@aws-cdk/aws-secretsmanager'
-import { DnsRecordType } from '@aws-cdk/aws-servicediscovery'
-import { Construct, Stack, StackProps } from '@aws-cdk/core'
+  ServicePrincipal,
+} from '@aws-cdk/aws-iam';
+import { LogGroup, RetentionDays } from '@aws-cdk/aws-logs';
+import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { DnsRecordType } from '@aws-cdk/aws-servicediscovery';
+import { Construct, Stack, StackProps } from '@aws-cdk/core';
 
 interface CreateClusterProps {
-  vpc: Vpc
-  defaultNamespace: string
+  vpc: Vpc;
+  defaultNamespace: string;
 }
 
 interface CreateSecretsProps {
-  githubTokenSecretArn: string
-  awsKeyPairSecretArn: string
-  jenkinsAdminPasswordSecretArn: string
-  jenkinsWindowsWorkerPasswordSecretArn: string
+  githubTokenSecretArn: string;
+  awsKeyPairSecretArn: string;
+  jenkinsAdminPasswordSecretArn: string;
+  jenkinsWindowsWorkerPasswordSecretArn: string;
 }
 
 interface JenkinsStackProps extends StackProps {
-  githubTokenSecretArn: string
-  awsKeyPairSecretArn: string
-  jenkinsAdminPasswordSecretArn: string
-  jenkinsWindowsWorkerPasswordSecretArn: string
+  githubTokenSecretArn: string;
+  awsKeyPairSecretArn: string;
+  jenkinsAdminPasswordSecretArn: string;
+  jenkinsWindowsWorkerPasswordSecretArn: string;
 }
 
 export class JenkinsStack extends Stack {
   constructor(scope: Construct, id: string, props: JenkinsStackProps) {
-    super(scope, id, props)
+    super(scope, id, props);
 
-    const vpc = this.createVpc()
+    const vpc = this.createVpc();
 
     const cluster = this.createCluster({
       vpc: vpc,
-      defaultNamespace: 'jenkins'
-    })
+      defaultNamespace: 'jenkins',
+    });
 
     const logGroup = new LogGroup(this, `${this.stackName}JenkinsLogGroup`, {
-      retention: RetentionDays.ONE_DAY
-    })
+      retention: RetentionDays.ONE_DAY,
+    });
 
-    const executionRole = this.createExecutionRole()
-    const jenkinsLeaderTaskRole = this.createJenkinsLeaderTaskRole()
-    const jenkinsWorkerTaskRole = this.createJenkinsWorkerTaskRole()
+    const executionRole = this.createExecutionRole();
+    const jenkinsLeaderTaskRole = this.createJenkinsLeaderTaskRole();
+    const jenkinsWorkerTaskRole = this.createJenkinsWorkerTaskRole();
 
     const vpcDefaultSecurityGroup = SecurityGroup.fromSecurityGroupId(
       this,
       `${this.stackName}DefaultSecurityGroup`,
-      vpc.vpcDefaultSecurityGroup
-    )
-    const subnets = vpc.privateSubnets.map((i) => i.subnetId)
+      vpc.vpcDefaultSecurityGroup,
+    );
+    const subnets = vpc.privateSubnets.map((i) => i.subnetId);
 
-    const secrets = this.createSecrets(props)
+    const secrets = this.createSecrets(props);
 
     const fargateService = new ApplicationLoadBalancedFargateService(
       this,
@@ -81,7 +81,7 @@ export class JenkinsStack extends Stack {
           taskRole: jenkinsLeaderTaskRole,
           logDriver: LogDriver.awsLogs({
             logGroup,
-            streamPrefix: 'jenkins-leader'
+            streamPrefix: 'jenkins-leader',
           }),
           environment: {
             GITHUB_USERNAME: 'kirkchen',
@@ -92,34 +92,34 @@ export class JenkinsStack extends Stack {
             JENKINS_WINDOWS_WORKER_SUBNETS: subnets.join(' '),
             JENKINS_LINUX_WORKER_ECS_CLUSTER_ARN: cluster.clusterArn,
             JENKINS_LINUX_WORKER_SECURITY_GROUPS:
-              vpcDefaultSecurityGroup.securityGroupId,
+            vpcDefaultSecurityGroup.securityGroupId,
             JENKINS_LINUX_WORKER_SUBNETS: subnets.join(','),
             JENKINS_LINUX_WORKER_TASK_ROLE: jenkinsWorkerTaskRole.roleArn,
             JENKINS_LINUX_WORKER_EXECUTION_ROLE: executionRole.roleArn,
-            JENKINS_LINUX_WORKER_LOGS_GROUP: logGroup.logGroupName
+            JENKINS_LINUX_WORKER_LOGS_GROUP: logGroup.logGroupName,
           },
-          secrets
+          secrets,
         },
         publicLoadBalancer: true,
-        cloudMapOptions: { name: 'leader', dnsRecordType: DnsRecordType.A }
-      }
-    )
+        cloudMapOptions: { name: 'leader', dnsRecordType: DnsRecordType.A },
+      },
+    );
 
     fargateService.targetGroup.configureHealthCheck({
-      path: '/login'
-    })
+      path: '/login',
+    });
 
     fargateService.service.taskDefinition.defaultContainer?.addPortMappings({
       containerPort: 50000,
-      hostPort: 50000
-    })
+      hostPort: 50000,
+    });
   }
 
   private createSecrets({
     githubTokenSecretArn,
     awsKeyPairSecretArn,
     jenkinsAdminPasswordSecretArn,
-    jenkinsWindowsWorkerPasswordSecretArn
+    jenkinsWindowsWorkerPasswordSecretArn,
   }: CreateSecretsProps) {
     if (
       !githubTokenSecretArn ||
@@ -127,54 +127,54 @@ export class JenkinsStack extends Stack {
       !jenkinsAdminPasswordSecretArn ||
       !jenkinsWindowsWorkerPasswordSecretArn
     ) {
-      return undefined
+      return undefined;
     }
 
     const githubToken = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}GithubToken`,
-      githubTokenSecretArn
-    )
+      githubTokenSecretArn,
+    );
     const awsKeyPair = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}AwsKeyPair`,
-      awsKeyPairSecretArn
-    )
+      awsKeyPairSecretArn,
+    );
     const jenkinsAdminPassword = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}JenkinsAdminPassword`,
-      jenkinsAdminPasswordSecretArn
-    )
+      jenkinsAdminPasswordSecretArn,
+    );
     const jenkinsWindowsWorkerPassword = Secret.fromSecretCompleteArn(
       this,
       `${this.stackName}JenkinsWindowsWorkerPassword`,
-      jenkinsWindowsWorkerPasswordSecretArn
-    )
+      jenkinsWindowsWorkerPasswordSecretArn,
+    );
 
     return {
       AWS_KEYPAIR: EcsSecret.fromSecretsManager(awsKeyPair),
       GITHUB_TOKEN: EcsSecret.fromSecretsManager(githubToken),
       JENKINS_ADMIN_PASSWORD: EcsSecret.fromSecretsManager(
-        jenkinsAdminPassword
+        jenkinsAdminPassword,
       ),
       JENKINS_WINDOWS_WORKER_PASSWORD: EcsSecret.fromSecretsManager(
-        jenkinsWindowsWorkerPassword
-      )
-    }
+        jenkinsWindowsWorkerPassword,
+      ),
+    };
   }
 
   private createJenkinsWorkerTaskRole(): Role {
     return new Role(this, `${this.stackName}JenkinsWorkerTaskRole`, {
       roleName: `${this.stackName}JenkinsWorkerTaskRole`,
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
-    })
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
   }
 
   private createJenkinsLeaderTaskRole(): Role {
     const taskRole = new Role(this, `${this.stackName}JenkinsLeaderTaskRole`, {
       roleName: `${this.stackName}JenkinsLeaderTaskRole`,
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
-    })
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
 
     taskRole.addManagedPolicy(
       new ManagedPolicy(this, `${this.stackName}CreateEC2WorkerPolicy`, {
@@ -202,13 +202,13 @@ export class JenkinsStack extends Stack {
               'ec2:DescribeSubnets',
               'ec2:GetPasswordData',
               'iam:ListInstanceProfilesForRole',
-              'iam:PassRole'
+              'iam:PassRole',
             ],
-            resources: ['*']
-          })
-        ]
-      })
-    )
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
 
     // TODO: Make policy stricter
     taskRole.addManagedPolicy(
@@ -227,42 +227,42 @@ export class JenkinsStack extends Stack {
               'ecs:ListContainerInstances',
               'ecs:RunTask',
               'ecs:StopTask',
-              'ecs:DescribeTasks'
+              'ecs:DescribeTasks',
             ],
-            resources: ['*']
-          })
-        ]
-      })
-    )
+            resources: ['*'],
+          }),
+        ],
+      }),
+    );
 
-    return taskRole
+    return taskRole;
   }
 
   private createExecutionRole(): Role {
     const executionRole = new Role(this, `${this.stackName}ExecutionRole`, {
       roleName: `${this.stackName}ExecutionRole`,
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
-    })
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
 
     executionRole.addManagedPolicy(
       ManagedPolicy.fromAwsManagedPolicyName(
-        'service-role/AmazonECSTaskExecutionRolePolicy'
-      )
-    )
+        'service-role/AmazonECSTaskExecutionRolePolicy',
+      ),
+    );
 
-    return executionRole
+    return executionRole;
   }
 
   private createCluster({ vpc, defaultNamespace }: CreateClusterProps) {
     return new Cluster(this, `${this.stackName}Cluster`, {
       vpc,
       defaultCloudMapNamespace: {
-        name: defaultNamespace
-      }
-    })
+        name: defaultNamespace,
+      },
+    });
   }
 
   private createVpc() {
-    return new Vpc(this, `${this.stackName}Vpc`, {})
+    return new Vpc(this, `${this.stackName}Vpc`, {});
   }
 }
