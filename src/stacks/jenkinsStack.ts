@@ -31,6 +31,7 @@ interface CreateSecretsProps {
 }
 
 interface JenkinsStackProps extends StackProps {
+  useDefaultVpc: boolean;
   githubTokenSecretArn: string;
   awsKeyPairSecretArn: string;
   jenkinsAdminPasswordSecretArn: string;
@@ -41,7 +42,9 @@ export class JenkinsStack extends Stack {
   constructor(scope: Construct, id: string, props: JenkinsStackProps) {
     super(scope, id, props);
 
-    const vpc = this.createVpc();
+    const vpc = props.useDefaultVpc ?
+      Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true }) as Vpc :
+      this.createVpc();
 
     const cluster = this.createCluster({
       vpc: vpc,
@@ -61,7 +64,7 @@ export class JenkinsStack extends Stack {
       `${this.stackName}DefaultSecurityGroup`,
       vpc.vpcDefaultSecurityGroup,
     );
-    const subnets = vpc.privateSubnets.map((i) => i.subnetId);
+    const subnets = this.getSubnetsFromVpc(vpc);
 
     const secrets = this.createSecrets(props);
 
@@ -264,5 +267,11 @@ export class JenkinsStack extends Stack {
 
   private createVpc() {
     return new Vpc(this, `${this.stackName}Vpc`, {});
+  }
+
+  private getSubnetsFromVpc(vpc: Vpc): string[] {
+    const subnets = vpc.privateSubnets.length > 0 ? vpc.privateSubnets : vpc.publicSubnets;
+
+    return subnets.map(i => i.subnetId);
   }
 }

@@ -5,6 +5,11 @@ import { JenkinsStack } from '../src/stacks/jenkinsStack';
 test('Snapshot', () => {
   const app = new App();
   const stack = new JenkinsStack(app, 'test', {
+    useDefaultVpc: true,
+    env: {
+      account: '12345678',
+      region: 'ap-northeast-1',
+    },
     githubTokenSecretArn:
       'arn:aws:secretsmanager:ap-northeast-1:873556626032:secret:test-ZOUxvI',
     awsKeyPairSecretArn:
