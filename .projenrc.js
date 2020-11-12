@@ -1,7 +1,7 @@
 const {AwsCdkTypeScriptApp} = require('projen')
 
 const project = new AwsCdkTypeScriptApp({
-  cdkVersion: '1.63.0',
+  cdkVersion: '1.73.0',
   name: 'jenkins-as-code-example',
 
   /* AwsCdkTypeScriptAppOptions */
