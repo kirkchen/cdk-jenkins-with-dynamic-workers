@@ -30,10 +30,17 @@ jenkins:
             spotConfig:
               useBidPrice: false
             subnetId: ${JENKINS_WINDOWS_WORKER_SUBNETS}
+            securityGroups: ${JENKINS_WINDOWS_WORKER_SECURITY_GROUPS}
             tags:
               - name: "Name"
                 value: "Jenkins-Dynamic-Windows-Worker"
             type: T3Medium
+            userData: |-
+              <powershell>
+              $Password = "${JENKINS_WINDOWS_WORKER_PASSWORD}" | ConvertTo-SecureString -asPlainText -Force
+              New-LocalUser "${JENKINS_WINDOWS_WORKER_ACCOUNT}" -Password $Password -PasswordNeverExpires
+              Add-LocalGroupMember -Group "Administrators" -Member "${JENKINS_WINDOWS_WORKER_ACCOUNT}"
+              </powershell>
     - ecs:
         credentialsId: false
         cluster: ${JENKINS_LINUX_WORKER_ECS_CLUSTER_ARN}
@@ -53,6 +60,7 @@ jenkins:
             taskrole: ${JENKINS_LINUX_WORKER_TASK_ROLE}
             executionRole: ${JENKINS_LINUX_WORKER_EXECUTION_ROLE}
             templateName: "Jenkins-Dynamic-Linux-Worker"
+            assignPublicIp: ${JENKINS_LINUX_WORKER_USE_PUBLIC_SUBNETS}
             logDriver: "awslogs"
             logDriverOptions:
               - name: "awslogs-group"

@@ -13,14 +13,18 @@ const secrets = {
   awsKeyPairSecretArn: process.env.AWS_KEYPAIR_SECRETS_ARN,
   jenkinsAdminPasswordSecretArn: process.env.JENKINS_ADMIN_PASSWORD_SECRETS_ARN,
   jenkinsWindowsWorkerPasswordSecretArn:
-    process.env.JENKINS_WINDOWS_WORKER_PASSWORD_SECRETS_ARN,
+  process.env.JENKINS_WINDOWS_WORKER_PASSWORD_SECRETS_ARN,
 };
 
 const app = new App();
 
 new ImageBuilderStack(app, 'image-builder-stack-dev', { env: devEnv });
 // new ImageBuilderStack(app, 'my-stack-prod', { env: prodEnv });
+
 new JenkinsStack(app, 'jenkins-stack-dev', {
+  useDefaultVpc: true,
+  usePublicSubnets: true,
+  windowsWorkerAmi: 'ami-0209072377fde2f62',
   env: devEnv,
   githubTokenSecretArn: secrets.githubTokenSecretArn!,
   awsKeyPairSecretArn: secrets.awsKeyPairSecretArn!,

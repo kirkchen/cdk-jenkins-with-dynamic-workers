@@ -11,7 +11,7 @@
     "projen:upgrade": "yarn upgrade -L projen && CI=\"\" yarn projen",
     "compile": "true",
     "build": "yarn run test && yarn run compile && yarn run synth",
-    "test": "rm -fr lib/ && jest --passWithNoTests --updateSnapshot && yarn run eslint",
+    "test": "rm -fr lib/ && jest --passWithNoTests && yarn run eslint",
     "test:watch": "jest --watch",
     "test:update": "jest --updateSnapshot",
     "eslint": "eslint --ext .ts --fix --no-error-on-unmatched-pattern src test",
