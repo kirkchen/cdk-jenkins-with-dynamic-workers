@@ -372,6 +372,12 @@ Object {
         "HealthCheckPath": "/login",
         "Port": 80,
         "Protocol": "HTTP",
+        "TargetGroupAttributes": Array [
+          Object {
+            "Key": "deregistration_delay.timeout_seconds",
+            "Value": "30",
+          },
+        ],
         "TargetType": "ip",
         "VpcId": "vpc-12345",
       },

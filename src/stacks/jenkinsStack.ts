@@ -121,6 +121,7 @@ export class JenkinsStack extends Stack {
     fargateService.targetGroup.configureHealthCheck({
       path: '/login',
     });
+    fargateService.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
 
     fargateService.service.taskDefinition.defaultContainer?.addPortMappings({
       containerPort: 50000,
