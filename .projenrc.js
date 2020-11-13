@@ -87,6 +87,7 @@ const project = new AwsCdkTypeScriptApp({
   // sampleCode: true,                                                         /* Generate one-time sample in `src/` and `test/` if there are no files there. */
   // tsconfig: undefined,                                                      /* Custom TSConfig. */
   // typescriptVersion: "^3.9.5",                                              /* TypeScript version to use. */
+  buildWorkflow: false,
   license: 'MIT',
   gitignore: ['.idea'],
   cdkDependencies: [
