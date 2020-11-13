@@ -433,7 +433,7 @@ Object {
               },
               Object {
                 "Name": "JENKINS_WINDOWS_WORKER_AMI",
-                "Value": "ami-0209072377fde2f62",
+                "Value": "ami-12345678",
               },
               Object {
                 "Name": "JENKINS_WINDOWS_WORKER_ACCOUNT",
@@ -509,7 +509,7 @@ Object {
                   Object {
                     "Ref": "AWS::URLSuffix",
                   },
-                  "/aws-cdk/assets:9ad112ea05680255fbe9dd30bc8d437037046d0f9460207afb385f7700a364de",
+                  "/aws-cdk/assets:60758f6dcfe26c8d05ad6251c1395be3902528a229882342cf668777366a694d",
                 ],
               ],
             },

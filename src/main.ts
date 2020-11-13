@@ -24,6 +24,7 @@ new ImageBuilderStack(app, 'image-builder-stack-dev', { env: devEnv });
 new JenkinsStack(app, 'jenkins-stack-dev', {
   useDefaultVpc: true,
   usePublicSubnets: true,
+  windowsWorkerAmi: 'ami-0209072377fde2f62',
   env: devEnv,
   githubTokenSecretArn: secrets.githubTokenSecretArn!,
   awsKeyPairSecretArn: secrets.awsKeyPairSecretArn!,

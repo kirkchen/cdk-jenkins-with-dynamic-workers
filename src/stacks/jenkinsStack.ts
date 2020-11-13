@@ -33,6 +33,7 @@ interface CreateSecretsProps {
 interface JenkinsStackProps extends StackProps {
   useDefaultVpc: boolean;
   usePublicSubnets: boolean;
+  windowsWorkerAmi: string;
   githubTokenSecretArn: string;
   awsKeyPairSecretArn: string;
   jenkinsAdminPasswordSecretArn: string;
@@ -97,7 +98,7 @@ export class JenkinsStack extends Stack {
             GITHUB_USERNAME: 'kirkchen',
             GITHUB_REPO: 'jenkins-as-code-example',
             JENKINS_ADMIN_ACCOUNT: 'admin',
-            JENKINS_WINDOWS_WORKER_AMI: 'ami-0209072377fde2f62',
+            JENKINS_WINDOWS_WORKER_AMI: props.windowsWorkerAmi,
             JENKINS_WINDOWS_WORKER_ACCOUNT: 'jenkins',
             JENKINS_WINDOWS_WORKER_SUBNETS: subnets.join(' '),
             JENKINS_WINDOWS_WORKER_SECURITY_GROUPS: workerSecurityGroup.securityGroupName,

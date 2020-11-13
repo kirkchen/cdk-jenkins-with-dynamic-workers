@@ -7,6 +7,7 @@ test('Snapshot', () => {
   const stack = new JenkinsStack(app, 'test', {
     useDefaultVpc: true,
     usePublicSubnets: false,
+    windowsWorkerAmi: 'ami-12345678',
     env: {
       account: '12345678',
       region: 'ap-northeast-1',
