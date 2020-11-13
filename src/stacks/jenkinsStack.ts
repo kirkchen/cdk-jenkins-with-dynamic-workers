@@ -1,4 +1,4 @@
-import { Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import { MachineImage, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
 import {
   Cluster,
   ContainerImage,
@@ -75,6 +75,12 @@ export class JenkinsStack extends Stack {
       defaultNamespace: 'jenkins',
     });
 
+    const ami = MachineImage.lookup({
+      name: 'JenkinsWindowsWorkerRecipe*',
+      owners: [this.account],
+      windows: true,
+    });
+
     const fargateService = new ApplicationLoadBalancedFargateService(
       this,
       `${this.stackName}JenkinsService`,
@@ -98,7 +104,7 @@ export class JenkinsStack extends Stack {
             GITHUB_USERNAME: 'kirkchen',
             GITHUB_REPO: 'jenkins-as-code-example',
             JENKINS_ADMIN_ACCOUNT: 'admin',
-            JENKINS_WINDOWS_WORKER_AMI: props.windowsWorkerAmi,
+            JENKINS_WINDOWS_WORKER_AMI: ami.getImage(this).imageId,
             JENKINS_WINDOWS_WORKER_ACCOUNT: 'jenkins',
             JENKINS_WINDOWS_WORKER_SUBNETS: subnets.join(' '),
             JENKINS_WINDOWS_WORKER_SECURITY_GROUPS: workerSecurityGroup.securityGroupName,

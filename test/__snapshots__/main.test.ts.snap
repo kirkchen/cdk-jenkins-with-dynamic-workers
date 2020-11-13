@@ -439,7 +439,7 @@ Object {
               },
               Object {
                 "Name": "JENKINS_WINDOWS_WORKER_AMI",
-                "Value": "ami-12345678",
+                "Value": "ami-1234",
               },
               Object {
                 "Name": "JENKINS_WINDOWS_WORKER_ACCOUNT",
