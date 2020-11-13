@@ -46,11 +46,11 @@ export class ImageBuilderStack extends Stack {
       ).toString(),
     });
 
-    const jenkinsWindowsSlaveRecipe = new CfnImageRecipe(
+    const jenkinsWindowsWorkerRecipe = new CfnImageRecipe(
       this,
-      'Jenkins Windows Slave Recipe',
+      `${this.stackName}JenkinsWindowsWorkerRecipe`,
       {
-        name: 'Jenkins Windows Slave Recipe',
+        name: 'JenkinsWindowsWorkerRecipe',
         version: '1.0.3',
         components: [
           {
@@ -69,7 +69,7 @@ export class ImageBuilderStack extends Stack {
       },
     );
 
-    const windowsBuilderRole = new Role(this, 'Windows Builder Role', {
+    const windowsBuilderRole = new Role(this, `${this.stackName}WindowsBuilderRole`, {
       roleName: 'WindowsBuilderRole',
       assumedBy: new ServicePrincipal('ec2.amazonaws.com'),
     });
@@ -84,7 +84,7 @@ export class ImageBuilderStack extends Stack {
 
     const windowsBuilderInstanceProfile = new CfnInstanceProfile(
       this,
-      'Windows Builder Instance Profile',
+      `${this.stackName}WindowsBuilderInstanceProfile`,
       {
         instanceProfileName: 'WindowsBuilderInstanceProfile',
         roles: [windowsBuilderRole.roleName],
@@ -93,17 +93,17 @@ export class ImageBuilderStack extends Stack {
 
     const windowsImageBuilderInfraConfig = new CfnInfrastructureConfiguration(
       this,
-      'Windows Image Builder',
+      `${this.stackName}WindowsImageBuilderConfig`,
       {
-        name: 'Windows Image Builder',
+        name: 'WindowsImageBuilderConfig',
         instanceTypes: ['t3.large'],
         instanceProfileName: windowsBuilderInstanceProfile.instanceProfileName!,
       },
     );
 
-    new CfnImagePipeline(this, 'Jenkins Windows Slave', {
-      name: 'Jenkins Windows Slave Pipeline',
-      imageRecipeArn: jenkinsWindowsSlaveRecipe.attrArn,
+    new CfnImagePipeline(this, `${this.stackName}JenkinsWindowsWorkerPipeline`, {
+      name: 'JenkinsWindowsWorkerPipeline',
+      imageRecipeArn: jenkinsWindowsWorkerRecipe.attrArn,
       infrastructureConfigurationArn: windowsImageBuilderInfraConfig.attrArn,
     });
   }
