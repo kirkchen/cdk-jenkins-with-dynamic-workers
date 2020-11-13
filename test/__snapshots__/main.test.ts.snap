@@ -107,21 +107,6 @@ Object {
       },
       "Type": "AWS::IAM::ManagedPolicy",
     },
-    "testDefaultSecurityGroupfromtesttestJenkinsServiceLBSecurityGroup5101FF398080CDDCA859": Object {
-      "Properties": Object {
-        "Description": "Load balancer to target",
-        "FromPort": 8080,
-        "IpProtocol": "tcp",
-        "SourceSecurityGroupId": Object {
-          "Fn::GetAtt": Array [
-            "testJenkinsServiceLBSecurityGroupAF09D6F0",
-            "GroupId",
-          ],
-        },
-        "ToPort": 8080,
-      },
-      "Type": "AWS::EC2::SecurityGroupIngress",
-    },
     "testExecutionRoleA7C4E8A8": Object {
       "Properties": Object {
         "AssumeRolePolicyDocument": Object {
@@ -279,7 +264,14 @@ Object {
         "NetworkConfiguration": Object {
           "AwsvpcConfiguration": Object {
             "AssignPublicIp": "DISABLED",
-            "SecurityGroups": Array [],
+            "SecurityGroups": Array [
+              Object {
+                "Fn::GetAtt": Array [
+                  "testLeaderSecurityGroup68F0661D",
+                  "GroupId",
+                ],
+              },
+            ],
             "Subnets": Array [
               "p-12345",
               "p-67890",
@@ -401,9 +393,15 @@ Object {
       },
       "Type": "AWS::EC2::SecurityGroup",
     },
-    "testJenkinsServiceLBSecurityGrouptotesttestDefaultSecurityGroupFCC98A92808024481086": Object {
+    "testJenkinsServiceLBSecurityGrouptotesttestLeaderSecurityGroup73C5D35080808E6D634E": Object {
       "Properties": Object {
         "Description": "Load balancer to target",
+        "DestinationSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "testLeaderSecurityGroup68F0661D",
+            "GroupId",
+          ],
+        },
         "FromPort": 8080,
         "GroupId": Object {
           "Fn::GetAtt": Array [
@@ -446,6 +444,12 @@ Object {
                 "Value": "p-12345 p-67890",
               },
               Object {
+                "Name": "JENKINS_WINDOWS_WORKER_SECURITY_GROUPS",
+                "Value": Object {
+                  "Ref": "testWorkerSecurityGroupC667D45F",
+                },
+              },
+              Object {
                 "Name": "JENKINS_LINUX_WORKER_ECS_CLUSTER_ARN",
                 "Value": Object {
                   "Fn::GetAtt": Array [
@@ -456,6 +460,16 @@ Object {
               },
               Object {
                 "Name": "JENKINS_LINUX_WORKER_SECURITY_GROUPS",
+                "Value": Object {
+                  "Fn::GetAtt": Array [
+                    "testWorkerSecurityGroupC667D45F",
+                    "GroupId",
+                  ],
+                },
+              },
+              Object {
+                "Name": "JENKINS_LINUX_WORKER_USE_PUBLIC_SUBNETS",
+                "Value": "false",
               },
               Object {
                 "Name": "JENKINS_LINUX_WORKER_SUBNETS",
@@ -495,7 +509,7 @@ Object {
                   Object {
                     "Ref": "AWS::URLSuffix",
                   },
-                  "/aws-cdk/assets:00cf9f4247d7185198a20b25b880165de6ed4bc7d583b4f1c5c6a9f720c8c0e3",
+                  "/aws-cdk/assets:9ad112ea05680255fbe9dd30bc8d437037046d0f9460207afb385f7700a364de",
                 ],
               ],
             },
@@ -580,6 +594,93 @@ Object {
         "RoleName": "testJenkinsWorkerTaskRole",
       },
       "Type": "AWS::IAM::Role",
+    },
+    "testLeaderSecurityGroup68F0661D": Object {
+      "Properties": Object {
+        "GroupDescription": "test/testLeaderSecurityGroup",
+        "SecurityGroupEgress": Array [
+          Object {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": "vpc-12345",
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "testLeaderSecurityGroupfromtesttestJenkinsServiceLBSecurityGroup5101FF398080E0DD54A7": Object {
+      "Properties": Object {
+        "Description": "Load balancer to target",
+        "FromPort": 8080,
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "testLeaderSecurityGroup68F0661D",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "testJenkinsServiceLBSecurityGroupAF09D6F0",
+            "GroupId",
+          ],
+        },
+        "ToPort": 8080,
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
+    "testLeaderSecurityGroupfromtesttestWorkerSecurityGroup725A8F79ALLTRAFFICA880A23F": Object {
+      "Properties": Object {
+        "Description": "from testtestWorkerSecurityGroup725A8F79:ALL TRAFFIC",
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "testLeaderSecurityGroup68F0661D",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "testWorkerSecurityGroupC667D45F",
+            "GroupId",
+          ],
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
+    },
+    "testWorkerSecurityGroupC667D45F": Object {
+      "Properties": Object {
+        "GroupDescription": "test/testWorkerSecurityGroup",
+        "SecurityGroupEgress": Array [
+          Object {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1",
+          },
+        ],
+        "VpcId": "vpc-12345",
+      },
+      "Type": "AWS::EC2::SecurityGroup",
+    },
+    "testWorkerSecurityGroupfromtesttestLeaderSecurityGroup73C5D350ALLTRAFFICEB1E4845": Object {
+      "Properties": Object {
+        "Description": "from testtestLeaderSecurityGroup73C5D350:ALL TRAFFIC",
+        "GroupId": Object {
+          "Fn::GetAtt": Array [
+            "testWorkerSecurityGroupC667D45F",
+            "GroupId",
+          ],
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": Object {
+          "Fn::GetAtt": Array [
+            "testLeaderSecurityGroup68F0661D",
+            "GroupId",
+          ],
+        },
+      },
+      "Type": "AWS::EC2::SecurityGroupIngress",
     },
   },
 }

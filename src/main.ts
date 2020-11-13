@@ -23,6 +23,7 @@ new ImageBuilderStack(app, 'image-builder-stack-dev', { env: devEnv });
 
 new JenkinsStack(app, 'jenkins-stack-dev', {
   useDefaultVpc: true,
+  usePublicSubnets: true,
   env: devEnv,
   githubTokenSecretArn: secrets.githubTokenSecretArn!,
   awsKeyPairSecretArn: secrets.awsKeyPairSecretArn!,

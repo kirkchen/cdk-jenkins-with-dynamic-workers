@@ -6,6 +6,7 @@ test('Snapshot', () => {
   const app = new App();
   const stack = new JenkinsStack(app, 'test', {
     useDefaultVpc: true,
+    usePublicSubnets: false,
     env: {
       account: '12345678',
       region: 'ap-northeast-1',
